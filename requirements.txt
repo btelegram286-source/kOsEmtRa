@@ -4,7 +4,6 @@ tgcrypto>=1.2.5
 
 # Video/Audio Processing
 yt-dlp>=2023.12.30
-moviepy>=1.0.3
 ffmpeg-python>=0.2.0
 
 # Image Processing

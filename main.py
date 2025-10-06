@@ -24,12 +24,8 @@ from flask import Flask, jsonify
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from yt_dlp import YoutubeDL
-try:
-    from moviepy.editor import VideoFileClip
-    MOVIEPY_AVAILABLE = True
-except ImportError:
-    print("⚠️ MoviePy modülü yüklenemedi - Video dönüştürme özelliği devre dışı")
-    MOVIEPY_AVAILABLE = False
+# MoviePy import'u kaldırıldı - Render.com'da sorun çıkarıyor
+MOVIEPY_AVAILABLE = False
 
 try:
     from tqdm import tqdm
