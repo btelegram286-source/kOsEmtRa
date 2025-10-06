@@ -277,7 +277,18 @@ async def download_video(client, message, url, format_type, quality=None):
             'writethumbnail': False,
             'writeinfojson': False,
             'socket_timeout': 30,
-            'retries': 3
+            'retries': 3,
+            # YouTube bot koruması için ek ayarlar
+            'extractor_args': {
+                'youtube': {
+                    'skip': ['dash', 'hls'],
+                    'player_skip': ['webpage'],
+                    'player_client': ['android', 'web']
+                }
+            },
+            'http_headers': {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            }
         }
         
         # Format ayarları
@@ -575,7 +586,18 @@ async def handle_fast_download(client, message, url):
             'writethumbnail': False,
             'writeinfojson': False,
             'socket_timeout': 30,
-            'retries': 3
+            'retries': 3,
+            # YouTube bot koruması için ek ayarlar
+            'extractor_args': {
+                'youtube': {
+                    'skip': ['dash', 'hls'],
+                    'player_skip': ['webpage'],
+                    'player_client': ['android', 'web']
+                }
+            },
+            'http_headers': {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            }
         }
         
         # Platform emojisi
