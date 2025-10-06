@@ -283,7 +283,9 @@ async def download_video(client, message, url, format_type, quality=None):
                 'youtube': {
                     'skip': ['dash', 'hls'],
                     'player_skip': ['webpage'],
-                    'player_client': ['android_music', 'android_creator', 'android', 'web']
+                    'player_client': ['android_music', 'android_creator', 'android', 'web'],
+                    'comment_sort': ['top'],
+                    'max_comments': [0]
                 }
             },
             'http_headers': {
@@ -293,11 +295,16 @@ async def download_video(client, message, url, format_type, quality=None):
                 'Accept-Encoding': 'gzip, deflate',
                 'Accept-Charset': 'ISO-8859-1,utf-8;q=0.7,*;q=0.7',
                 'Connection': 'keep-alive',
+                'Referer': 'https://www.youtube.com/',
+                'Origin': 'https://www.youtube.com'
             },
-            'sleep_interval': 1,
-            'max_sleep_interval': 5,
-            'sleep_interval_requests': 1,
-            'sleep_interval_subtitles': 1,
+            'sleep_interval': 2,
+            'max_sleep_interval': 10,
+            'sleep_interval_requests': 2,
+            'sleep_interval_subtitles': 2,
+            'fragment_retries': 3,
+            'skip_unavailable_fragments': True,
+            'keep_fragments': False,
         }
         
         # Format ayarları
@@ -521,17 +528,21 @@ async def send_format_buttons(client, message):
         if ADVANCED_FEATURES_ENABLED:
             platform = advanced_features.detect_platform(url)
         
+        # Eğer advanced features devre dışıysa, basit URL kontrolü yap
         if not platform:
-            await message.reply_text(
-                "❌ **Desteklenmeyen Platform!** ❌\n\n"
-                "Lütfen geçerli bir video linki gönderin:\n"
-                "• YouTube\n"
-                "• TikTok\n"
-                "• Twitter\n"
-                "• Facebook",
-                parse_mode=None
-            )
-            return
+            if any(domain in url.lower() for domain in ['youtube.com', 'youtu.be', 'tiktok.com', 'twitter.com', 'x.com', 'facebook.com', 'fb.watch']):
+                platform = 'youtube' if 'youtube' in url.lower() or 'youtu.be' in url.lower() else 'unknown'
+            else:
+                await message.reply_text(
+                    "❌ **Desteklenmeyen Platform!** ❌\n\n"
+                    "Lütfen geçerli bir video linki gönderin:\n"
+                    "• YouTube\n"
+                    "• TikTok\n"
+                    "• Twitter\n"
+                    "• Facebook",
+                    parse_mode=None
+                )
+                return
         
         # URL'yi cache'e ekle
         url_id = cache_url(url)
@@ -601,7 +612,9 @@ async def handle_fast_download(client, message, url):
                 'youtube': {
                     'skip': ['dash', 'hls'],
                     'player_skip': ['webpage'],
-                    'player_client': ['android_music', 'android_creator', 'android', 'web']
+                    'player_client': ['android_music', 'android_creator', 'android', 'web'],
+                    'comment_sort': ['top'],
+                    'max_comments': [0]
                 }
             },
             'http_headers': {
@@ -611,11 +624,16 @@ async def handle_fast_download(client, message, url):
                 'Accept-Encoding': 'gzip, deflate',
                 'Accept-Charset': 'ISO-8859-1,utf-8;q=0.7,*;q=0.7',
                 'Connection': 'keep-alive',
+                'Referer': 'https://www.youtube.com/',
+                'Origin': 'https://www.youtube.com'
             },
-            'sleep_interval': 1,
-            'max_sleep_interval': 5,
-            'sleep_interval_requests': 1,
-            'sleep_interval_subtitles': 1,
+            'sleep_interval': 2,
+            'max_sleep_interval': 10,
+            'sleep_interval_requests': 2,
+            'sleep_interval_subtitles': 2,
+            'fragment_retries': 3,
+            'skip_unavailable_fragments': True,
+            'keep_fragments': False,
         }
         
         # Platform emojisi
