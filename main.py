@@ -19,7 +19,8 @@ import signal
 import asyncio
 import requests
 import threading
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
+from datetime import datetime, timedelta
 
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
@@ -112,13 +113,23 @@ web_app = Flask(__name__)
 @web_app.route('/health')
 def health_check():
     """Health check endpoint for Render.com"""
+    current_time = time.time()
+    uptime = current_time - bot_stats.get('start_time', current_time)
+    
     return jsonify({
         'status': 'healthy',
         'bot_running': True,
-        'uptime': time.time() - bot_stats.get('start_time', time.time()),
+        'uptime_seconds': int(uptime),
+        'uptime_formatted': str(timedelta(seconds=int(uptime))),
         'total_downloads': bot_stats.get('total_downloads', 0),
         'total_users': len(bot_stats.get('total_users', set())),
-        'timestamp': time.time()
+        'total_errors': bot_stats.get('total_errors', 0),
+        'last_keep_alive': bot_stats.get('last_keep_alive', 0),
+        'keep_alive_count': bot_stats.get('keep_alive_count', 0),
+        'last_keep_alive_ago': int(current_time - bot_stats.get('last_keep_alive', current_time)),
+        'timestamp': current_time,
+        'memory_usage': 'N/A',  # Render.com'da psutil kullanımı sınırlı
+        'version': '2.0.0'
     })
 
 @web_app.route('/')
@@ -140,13 +151,94 @@ def home():
         }
     })
 
+@web_app.route('/webhook', methods=['POST'])
+def webhook():
+    """Telegram webhook endpoint - hızlı yanıt için"""
+    try:
+        # Webhook verilerini al
+        update = request.get_json()
+        
+        # İşlemi arka planda çalıştır
+        threading.Thread(target=handle_webhook_update, args=(update,), daemon=True).start()
+        
+        # Hemen yanıt dön
+        return 'OK', 200
+        
+    except Exception as e:
+        logger.error(f"Webhook hatası: {e}")
+        return 'ERROR', 500
+
+def handle_webhook_update(update):
+    """Webhook güncellemelerini işle"""
+    try:
+        # Bu fonksiyon Telegram webhook güncellemelerini işler
+        # Şu an için basit bir log
+        logger.info(f"Webhook güncellemesi alındı: {update}")
+        
+    except Exception as e:
+        logger.error(f"Webhook işleme hatası: {e}")
+
+@web_app.route('/stats')
+def stats():
+    """Bot istatistikleri"""
+    current_time = time.time()
+    uptime = current_time - bot_stats.get('start_time', current_time)
+    
+    return jsonify({
+        'bot_stats': {
+            'uptime_seconds': int(uptime),
+            'uptime_formatted': str(timedelta(seconds=int(uptime))),
+            'total_downloads': bot_stats.get('total_downloads', 0),
+            'total_users': len(bot_stats.get('total_users', set())),
+            'total_errors': bot_stats.get('total_errors', 0),
+            'keep_alive_count': bot_stats.get('keep_alive_count', 0),
+            'last_keep_alive_ago': int(current_time - bot_stats.get('last_keep_alive', current_time))
+        },
+        'system': {
+            'python_version': sys.version,
+            'platform': sys.platform,
+            'timestamp': current_time
+        }
+    })
+
 # Bot istatistikleri
 bot_stats = {
     'start_time': time.time(),
     'total_downloads': 0,
     'total_users': set(),
-    'total_errors': 0
+    'total_errors': 0,
+    'last_keep_alive': time.time(),
+    'keep_alive_count': 0
 }
+
+# Keep-alive sistemi
+def keep_alive():
+    """Bot'un uykuya geçmesini engellemek için her 10 dakikada bir kendi URL'sine istek gönder"""
+    while True:
+        try:
+            # Bot URL'ini al
+            bot_url = os.getenv('RENDER_EXTERNAL_URL', 'https://kosemtra-telegram-bot.onrender.com')
+            
+            # Health check endpoint'ine istek gönder
+            response = requests.get(f"{bot_url}/health", timeout=10)
+            
+            if response.status_code == 200:
+                bot_stats['last_keep_alive'] = time.time()
+                bot_stats['keep_alive_count'] += 1
+                logger.info(f"✅ Keep-alive başarılı: {response.status_code} - Count: {bot_stats['keep_alive_count']}")
+            else:
+                logger.warning(f"⚠️ Keep-alive uyarı: {response.status_code}")
+                
+        except Exception as e:
+            logger.error(f"❌ Keep-alive hatası: {e}")
+        
+        # 10 dakika bekle
+        time.sleep(600)
+
+# Keep-alive thread'ini başlat
+keep_alive_thread = threading.Thread(target=keep_alive, daemon=True)
+keep_alive_thread.start()
+logger.info("🔄 Keep-alive sistemi başlatıldı")
 
 # URL cache sistemi (callback data boyutu limiti için)
 url_cache = {}

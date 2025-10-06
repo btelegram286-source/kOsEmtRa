@@ -109,6 +109,18 @@ python main.py
 3. Build command: `pip install -r requirements.txt`
 4. Start command: `python main.py`
 
+#### Environment Variables:
+```
+API_ID=your_api_id_here
+API_HASH=your_api_hash_here
+BOT_TOKEN=your_bot_token_here
+BOT_OWNER_ID=your_telegram_user_id_here
+RENDER_EXTERNAL_URL=https://your-bot-name.onrender.com
+```
+
+#### Keep-Alive Sistemi:
+Bot otomatik olarak her 10 dakikada bir kendi URL'sine istek göndererek uykuya geçmesini engeller.
+
 ### Heroku
 1. Heroku CLI'yi yükleyin
 2. `Procfile` oluşturun: `web: python main.py`
