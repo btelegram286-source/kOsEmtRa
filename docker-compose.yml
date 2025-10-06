@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  kosemtra-bot:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      - API_ID=${API_ID}
+      - API_HASH=${API_HASH}
+      - BOT_TOKEN=${BOT_TOKEN}
+      - BOT_OWNER_ID=${BOT_OWNER_ID}
+      - MAX_FILE_SIZE=2097152000
+      - DOWNLOAD_DIR=downloads
+      - TEMP_DIR=temp
+      - MAX_VIDEO_DURATION=3600
+      - ENABLE_VIDEO_DOWNLOAD=true
+      - ENABLE_GUI_CONTROL=false
+      - ENABLE_SCREENSHOT=false
+      - ENABLE_ADMIN_PANEL=true
+      - ENABLE_AUTO_CONVERT=true
+    volumes:
+      - ./downloads:/app/downloads
+      - ./temp:/app/temp
+    restart: unless-stopped
