@@ -39,13 +39,8 @@ except ImportError:
     print("HATA: Pillow kutuphanesi bulunamadi. Lutfen 'pip install Pillow' ile yukleyin.")
     sys.exit(1)
 
-try:
-    from auto_gui import auto_gui
-    print("PyAutoGUI modulu yuklendi - Otomatik GUI kontrolu aktif.")
-    AUTO_GUI_ENABLED = True
-except ImportError:
-    print("UYARI: PyAutoGUI modulu bulunamadi. Otomatik GUI kontrolu devre disi.")
-    AUTO_GUI_ENABLED = False
+# PyAutoGUI modulu kaldirildi - Render.com'da GUI ortami yok
+AUTO_GUI_ENABLED = False
 
 try:
     from admin_panel import admin_panel
