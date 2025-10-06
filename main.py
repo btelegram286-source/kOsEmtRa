@@ -153,16 +153,29 @@ url_cache = {}
 url_cache_counter = 0
 
 def cache_url(url: str) -> str:
-    """URL'yi cache'e ekle ve ID döndür"""
+    """URL'yi cache'e ekle ve kısa ID döndür"""
     global url_cache_counter
-    url_id = f"url_{url_cache_counter}"
+    
+    # URL'yi hash'le ve kısa ID oluştur
+    import hashlib
+    url_hash = hashlib.md5(url.encode()).hexdigest()[:8]
+    url_id = f"u_{url_hash}"
+    
+    # Cache'e ekle
     url_cache[url_id] = url
     url_cache_counter += 1
+    
+    logger.info(f"URL cache'e eklendi: {url_id} -> {url[:50]}...")
     return url_id
 
 def get_cached_url(url_id: str) -> str:
     """Cache'den URL al"""
-    return url_cache.get(url_id, '')
+    url = url_cache.get(url_id, '')
+    if url:
+        logger.info(f"URL cache'den alındı: {url_id} -> {url[:50]}...")
+    else:
+        logger.warning(f"URL cache'de bulunamadı: {url_id}")
+    return url
 
 ######################################
 #          FONKSİYONLAR             #
@@ -506,20 +519,20 @@ async def send_format_buttons(client, message):
         # Format seçenekleri (kısa callback data ile)
         keyboard = [
             [
-                InlineKeyboardButton("🎵 MP3 (128kbps)", callback_data=f"dl_mp3_128_{url_id}"),
-                InlineKeyboardButton("🎵 MP3 (192kbps)", callback_data=f"dl_mp3_192_{url_id}")
+                InlineKeyboardButton("🎵 MP3 (128kbps)", callback_data=f"mp3_128_{url_id}"),
+                InlineKeyboardButton("🎵 MP3 (192kbps)", callback_data=f"mp3_192_{url_id}")
             ],
             [
-                InlineKeyboardButton("🎵 MP3 (256kbps)", callback_data=f"dl_mp3_256_{url_id}"),
-                InlineKeyboardButton("🎵 MP3 (320kbps)", callback_data=f"dl_mp3_320_{url_id}")
+                InlineKeyboardButton("🎵 MP3 (256kbps)", callback_data=f"mp3_256_{url_id}"),
+                InlineKeyboardButton("🎵 MP3 (320kbps)", callback_data=f"mp3_320_{url_id}")
             ],
             [
-                InlineKeyboardButton("📺 MP4 (360p)", callback_data=f"dl_mp4_360_{url_id}"),
-                InlineKeyboardButton("📺 MP4 (480p)", callback_data=f"dl_mp4_480_{url_id}")
+                InlineKeyboardButton("📺 MP4 (360p)", callback_data=f"mp4_360_{url_id}"),
+                InlineKeyboardButton("📺 MP4 (480p)", callback_data=f"mp4_480_{url_id}")
             ],
             [
-                InlineKeyboardButton("📺 MP4 (720p)", callback_data=f"dl_mp4_720_{url_id}"),
-                InlineKeyboardButton("📺 MP4 (1080p)", callback_data=f"dl_mp4_1080_{url_id}")
+                InlineKeyboardButton("📺 MP4 (720p)", callback_data=f"mp4_720_{url_id}"),
+                InlineKeyboardButton("📺 MP4 (1080p)", callback_data=f"mp4_1080_{url_id}")
             ]
         ]
         
@@ -647,18 +660,27 @@ async def handle_callback_query(client, callback_query):
             await callback_query.answer("⚡ Hızlı indirme linki bekleniyor...")
             return
         
-        # Download callbacks
-        if data.startswith("dl_"):
+        # Download callbacks - mp3 ve mp4 için
+        if data.startswith("mp3_") or data.startswith("mp4_"):
             parts = data.split("_")
-            if len(parts) >= 4:
-                format_type = parts[1]  # mp3 or mp4
-                quality = parts[2]     # 128, 192, 360, etc.
-                url_id = parts[3]      # URL ID
+            if len(parts) >= 3:
+                format_type = parts[0]  # mp3 or mp4
+                quality = parts[1]      # 128, 192, 360, etc.
+                url_id = "_".join(parts[2:])  # URL ID (underscore içerebilir)
                 
                 # Cache'den URL al
                 url = get_cached_url(url_id)
                 if not url:
-                    await callback_query.answer("❌ URL bulunamadı. Lütfen tekrar gönderin.", show_alert=True)
+                    # URL bulunamadı - kullanıcıya bilgi ver
+                    keyboard = [[InlineKeyboardButton("🔄 Linki Tekrar Gönder", callback_data="resend_url")]]
+                    await callback_query.edit_message_text(
+                        "❌ **URL Bulunamadı!**\n\n"
+                        "Bot yeniden başlatıldığı için URL kaybedildi.\n"
+                        "Lütfen video linkini tekrar gönderin.",
+                        reply_markup=InlineKeyboardMarkup(keyboard),
+                        parse_mode=None
+                    )
+                    await callback_query.answer("❌ Lütfen linki tekrar gönderin.", show_alert=True)
                     return
                 
                 await callback_query.answer("📥 İndirme başlatılıyor...")
