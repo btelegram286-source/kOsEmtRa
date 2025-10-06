@@ -21,6 +21,7 @@ import requests
 import threading
 from flask import Flask, jsonify, request
 from datetime import datetime, timedelta
+from file_finder import find_downloaded_file # Dosya bulma modülü
 
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
@@ -504,20 +505,12 @@ async def download_video(client, message, url, format_type, quality=None):
             else:
                 file_name = file_name.rsplit(".", 1)[0] + ".mp4"
             
-            # Dosya kontrolü - alternatif yolları dene
-            if not os.path.exists(file_name):
-                # /tmp klasöründe ara
-                base_name = os.path.basename(file_name)
-                tmp_file = f"/tmp/{base_name}"
-                if os.path.exists(tmp_file):
-                    file_name = tmp_file
-                else:
-                    # Mevcut dizinde ara
-                    current_dir_file = os.path.join(os.getcwd(), base_name)
-                    if os.path.exists(current_dir_file):
-                        file_name = current_dir_file
-                    else:
-                        raise Exception(f"Dosya bulunamadı: {file_name}")
+            # Render.com uyumlu dosya kontrolü - Video indirme
+            try:
+                file_name = find_downloaded_file(file_name, "Video indirme")
+            except Exception as e:
+                logger.error(f"Video indirme - Dosya bulunamadı: {e}")
+                raise Exception(f"Dosya bulunamadı: {file_name}")
             
             # Dosya boyutu kontrolü
             file_size = os.path.getsize(file_name)
@@ -1123,20 +1116,12 @@ async def handle_direct_download(client, message, url, platform):
         if not success:
             raise Exception("Tüm bypass yöntemleri başarısız oldu. YouTube bot koruması çok güçlü.")
         
-        # Dosya kontrolü
-        if not os.path.exists(file_name):
-            # /tmp klasöründe ara
-            base_name = os.path.basename(file_name)
-            tmp_file = f"/tmp/{base_name}"
-            if os.path.exists(tmp_file):
-                file_name = tmp_file
-            else:
-                # Mevcut dizinde ara
-                current_dir_file = os.path.join(os.getcwd(), base_name)
-                if os.path.exists(current_dir_file):
-                    file_name = current_dir_file
-                else:
-                    raise Exception("Dosya indirilemedi!")
+        # Render.com uyumlu dosya kontrolü
+        try:
+            file_name = find_downloaded_file(file_name, "İndirme")
+        except Exception as e:
+            logger.error(f"İndirme - Dosya bulunamadı: {e}")
+            raise Exception("Dosya indirilemedi!")
         
         # Thumbnail indirme
         thumbnail_url = info_dict.get('thumbnail')
@@ -1212,6 +1197,7 @@ async def handle_direct_download(client, message, url, platform):
         except Exception as reply_error:
             logger.error(f"Hata mesajı gönderilemedi: {reply_error}")
             # Hata mesajı gönderilemezse sessizce geç
+
 
 async def handle_artist_search(client, message, artist_name):
     """
@@ -1527,20 +1513,12 @@ async def handle_artist_search(client, message, artist_name):
         if not success:
             raise Exception("Tüm bypass yöntemleri başarısız oldu. YouTube bot koruması çok güçlü.")
         
-        # Dosya kontrolü
-        if not os.path.exists(file_name):
-            # /tmp klasöründe ara
-            base_name = os.path.basename(file_name)
-            tmp_file = f"/tmp/{base_name}"
-            if os.path.exists(tmp_file):
-                file_name = tmp_file
-            else:
-                # Mevcut dizinde ara
-                current_dir_file = os.path.join(os.getcwd(), base_name)
-                if os.path.exists(current_dir_file):
-                    file_name = current_dir_file
-                else:
-                    raise Exception("Dosya indirilemedi!")
+        # Render.com uyumlu dosya kontrolü
+        try:
+            file_name = find_downloaded_file(file_name, "İndirme")
+        except Exception as e:
+            logger.error(f"İndirme - Dosya bulunamadı: {e}")
+            raise Exception("Dosya indirilemedi!")
         
         # Thumbnail indirme
         thumbnail_url = info_dict.get('thumbnail')
@@ -1756,8 +1734,11 @@ async def handle_fast_download(client, message, url):
                     file_name = ydl.prepare_filename(info_dict)
                     file_name = file_name.rsplit(".", 1)[0] + ".mp3"
             
-            # Dosya kontrolü
-            if not os.path.exists(file_name):
+            # Render.com uyumlu dosya kontrolü - Hızlı indirme
+            try:
+                file_name = find_downloaded_file(file_name, "Hızlı indirme")
+            except Exception as e:
+                logger.error(f"Hızlı indirme - Dosya bulunamadı: {e}")
                 raise Exception("Dosya indirilemedi!")
             
             # Thumbnail indirme
