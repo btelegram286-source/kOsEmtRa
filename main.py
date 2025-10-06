@@ -666,6 +666,9 @@ def run_bot():
     """Bot'u çalıştır"""
     try:
         logger.info("🚀 Bot başlatılıyor...")
+        # Thread içinde yeni event loop oluştur
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
         app.run()
     except Exception as e:
         logger.critical(f"🚨 Bot çalıştırılırken kritik hata: {e}", exc_info=True)
