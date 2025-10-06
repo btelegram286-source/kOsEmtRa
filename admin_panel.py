@@ -429,6 +429,34 @@ class AdminPanel:
 🛡️ **Güvenlik:** Tüm admin yetkileri sıfırlandı
 
 ⚠️ **Dikkat:** Diğer tüm adminlerin yetkileri kaldırıldı!"""
+    
+    def get_admin_keyboard(self):
+        """Admin paneli klavyesi döndür"""
+        from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+        
+        keyboard = [
+            [
+                InlineKeyboardButton("📊 İstatistikler", callback_data="vk_admin_stats"),
+                InlineKeyboardButton("👥 Kullanıcılar", callback_data="vk_admin_users")
+            ],
+            [
+                InlineKeyboardButton("⚙️ Ayarlar", callback_data="vk_admin_settings"),
+                InlineKeyboardButton("🔄 Yeniden Başlat", callback_data="vk_admin_restart")
+            ],
+            [
+                InlineKeyboardButton("🚫 Kullanıcı Engelle", callback_data="vk_admin_ban"),
+                InlineKeyboardButton("✅ Engeli Kaldır", callback_data="vk_admin_unban")
+            ],
+            [
+                InlineKeyboardButton("🧹 Temizle", callback_data="vk_admin_clean"),
+                InlineKeyboardButton("📝 Loglar", callback_data="vk_admin_logs")
+            ],
+            [
+                InlineKeyboardButton("🔙 Ana Menü", callback_data="start_menu"),
+                InlineKeyboardButton("❌ Kapat", callback_data="vk_close")
+            ]
+        ]
+        return InlineKeyboardMarkup(keyboard)
 
 # Global admin panel instance
 admin_panel = AdminPanel()

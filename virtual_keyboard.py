@@ -336,7 +336,7 @@ class VirtualKeyboard:
             self.current_text += emoji_char
         return self.current_text
     
-    def get_admin_keyboard(self) -> InlineKeyboardMarkup:
+    def get_admin_keyboard(self):
         """Admin paneli klavyesi"""
         keyboard = [
             [

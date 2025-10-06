@@ -635,64 +635,308 @@ async def handle_fast_download(client, message, url):
 @app.on_callback_query()
 async def handle_callback_query(client, callback_query):
     """
-    🔘 Callback query'leri işler
+    🔘 Callback query'leri işler - TÜM BUTONLAR
     """
     data = callback_query.data
     message = callback_query.message
+    user_id = callback_query.from_user.id
     
     try:
-        # Hızlı indirme
+        # ======================
+        # ANA MENÜ BUTONLARI
+        # ======================
+        
         if data == "fast_download":
             await callback_query.edit_message_text(
                 "⚡ **Hızlı İndirme Modu** ⚡\n\n"
-                "Video linkini gönderin (ReisMp3_bot gibi):\n"
+                "Video linkini şu şekilde gönderin:\n"
+                "• `fast:https://youtu.be/...`\n"
+                "• `hızlı:https://youtu.be/...`\n"
+                "• `quick:https://youtu.be/...`\n\n"
+                "📺 **Desteklenen Platformlar:**\n"
                 "• YouTube\n"
                 "• TikTok\n"
                 "• Twitter\n"
                 "• Facebook\n\n"
-                "💡 **Kullanım:**\n"
-                "• `fast:https://youtu.be/...` - Hızlı MP3 indirme\n"
-                "• `hızlı:https://youtu.be/...` - Hızlı MP3 indirme\n"
-                "• `quick:https://youtu.be/...` - Hızlı MP3 indirme\n\n"
                 "Bot otomatik olarak 192kbps MP3 indirecek!",
                 parse_mode=None
             )
-            await callback_query.answer("⚡ Hızlı indirme linki bekleniyor...")
+            await callback_query.answer("⚡ Link bekleniyor...")
             return
         
-        # Download callbacks - mp3 ve mp4 için
-        if data.startswith("mp3_") or data.startswith("mp4_"):
+        elif data == "quick_download":
+            keyboard = [
+                [InlineKeyboardButton("🎵 MP3 (192kbps)", callback_data="quick_mp3")],
+                [InlineKeyboardButton("📺 MP4 (720p)", callback_data="quick_mp4")],
+                [InlineKeyboardButton("🔙 Geri", callback_data="start_menu")]
+            ]
+            await callback_query.edit_message_text(
+                "📺 **Hızlı Video İndirme**\n\n"
+                "Format seçin ve ardından linki gönderin:",
+                reply_markup=InlineKeyboardMarkup(keyboard)
+            )
+            await callback_query.answer("📺 Format seçin")
+            return
+        
+        elif data == "user_stats":
+            if ADMIN_PANEL_ENABLED:
+                stats = admin_panel.stats
+                uptime = time.time() - stats.get('start_time', time.time())
+                uptime_str = str(timedelta(seconds=int(uptime)))
+                
+                user_activity = stats.get('user_activity', {}).get(str(user_id), {})
+                total_commands = user_activity.get('total_commands', 0)
+                total_downloads = user_activity.get('downloads', 0)
+                
+                await callback_query.edit_message_text(
+                    f"📊 **Kişisel İstatistikleriniz**\n\n"
+                    f"🆔 **User ID:** `{user_id}`\n"
+                    f"⚡ **Komut Sayısı:** {total_commands}\n"
+                    f"📥 **İndirme Sayısı:** {total_downloads}\n"
+                    f"⏱️ **Bot Uptime:** {uptime_str}\n\n"
+                    f"🌟 **Bot İstatistikleri:**\n"
+                    f"👥 Toplam Kullanıcı: {len(stats.get('user_activity', {}))}\n"
+                    f"📥 Toplam İndirme: {stats.get('total_downloads', 0)}"
+                )
+            else:
+                await callback_query.edit_message_text("📊 İstatistikler şu an mevcut değil.")
+            await callback_query.answer("📊 İstatistikler yüklendi")
+            return
+        
+        elif data == "bot_info":
+            await callback_query.edit_message_text(
+                "🤖 **Naofumi Telegram Bot**\n\n"
+                "📌 **Versiyon:** 2.0.0\n"
+                "👨‍💻 **Geliştirici:** @YourUsername\n"
+                "🚀 **Platform:** Render.com\n\n"
+                "🎯 **Özellikler:**\n"
+                "✅ YouTube İndirme\n"
+                f"{'✅' if ADVANCED_FEATURES_ENABLED else '❌'} TikTok İndirme\n"
+                f"{'✅' if ADVANCED_FEATURES_ENABLED else '❌'} Twitter İndirme\n"
+                f"{'✅' if VIRTUAL_KEYBOARD_ENABLED else '❌'} Sanal Klavye\n"
+                f"{'✅' if ADMIN_PANEL_ENABLED else '❌'} Admin Panel\n\n"
+                "💡 Bot sürekli geliştirilmektedir!"
+            )
+            await callback_query.answer("ℹ️ Bot bilgisi")
+            return
+        
+        elif data == "help_main":
+            await callback_query.edit_message_text(
+                "🆘 **Yardım Menüsü**\n\n"
+                "**📋 Temel Kullanım:**\n"
+                "1. Video linkini gönderin\n"
+                "2. Format seçin (MP3/MP4)\n"
+                "3. Kalite seçin\n"
+                "4. İndirin!\n\n"
+                "**⚡ Hızlı İndirme:**\n"
+                "`fast:link` yazarak direkt MP3 indirin\n\n"
+                "**⌨️ Sanal Klavye:**\n"
+                "Tıklamalı klavye ile metin yazın\n\n"
+                "**📞 Destek:**\n"
+                "Sorun yaşarsanız /start ile başa dönün"
+            )
+            await callback_query.answer("🆘 Yardım")
+            return
+        
+        elif data == "settings_menu":
+            keyboard = [
+                [InlineKeyboardButton("🌐 Dil Ayarları", callback_data="settings_lang")],
+                [InlineKeyboardButton("🔔 Bildirimler", callback_data="settings_notif")],
+                [InlineKeyboardButton("📁 İndirme Ayarları", callback_data="settings_download")],
+                [InlineKeyboardButton("🔙 Ana Menü", callback_data="start_menu")]
+            ]
+            await callback_query.edit_message_text(
+                "⚙️ **Ayarlar Menüsü**\n\n"
+                "Lütfen bir ayar kategorisi seçin:",
+                reply_markup=InlineKeyboardMarkup(keyboard)
+            )
+            await callback_query.answer("⚙️ Ayarlar")
+            return
+        
+        elif data == "start_menu":
+            # Ana menüye dön
+            keyboard = [
+                [
+                    InlineKeyboardButton("⚡ Hızlı İndirme", callback_data="fast_download"),
+                    InlineKeyboardButton("📺 Video İndir", callback_data="quick_download"),
+                    InlineKeyboardButton("⌨️ Sanal Klavye", callback_data="vk_main_menu")
+                ],
+                [
+                    InlineKeyboardButton("☑️ Checkbox Alanı", callback_data="vk_checkbox_menu"),
+                    InlineKeyboardButton("📝 Not Defteri", callback_data="vk_notepad")
+                ],
+                [
+                    InlineKeyboardButton("🤖 GUI Kontrol", callback_data="gui_menu"),
+                    InlineKeyboardButton("📊 İstatistikler", callback_data="user_stats")
+                ],
+                [
+                    InlineKeyboardButton("👑 Admin Panel", callback_data="vk_admin_panel"),
+                    InlineKeyboardButton("🆘 Yardım", callback_data="help_main")
+                ],
+                [
+                    InlineKeyboardButton("ℹ️ Bot Bilgisi", callback_data="bot_info"),
+                    InlineKeyboardButton("⚙️ Ayarlar", callback_data="settings_menu")
+                ]
+            ]
+            await callback_query.edit_message_text(
+                "🤖 **Ana Menü**\n\n"
+                "Bir seçenek seçin:",
+                reply_markup=InlineKeyboardMarkup(keyboard)
+            )
+            await callback_query.answer("🏠 Ana menü")
+            return
+        
+        # ======================
+        # VIRTUAL KEYBOARD
+        # ======================
+        
+        elif data == "vk_main_menu" or data == "vk_letters":
+            if VIRTUAL_KEYBOARD_ENABLED:
+                keyboard = virtual_keyboard.get_quick_keyboard()
+                current_text = virtual_keyboard.get_current_text()
+                await callback_query.edit_message_text(
+                    f"⌨️ **Sanal Klavye**\n\n"
+                    f"📝 **Metin:** {current_text if current_text else '(boş)'}\n\n"
+                    f"Bir seçenek seçin:",
+                    reply_markup=keyboard
+                )
+                await callback_query.answer("⌨️ Sanal klavye açıldı")
+            else:
+                await callback_query.answer("⌨️ Sanal klavye devre dışı", show_alert=True)
+            return
+        
+        elif data == "vk_numbers":
+            if VIRTUAL_KEYBOARD_ENABLED:
+                keyboard = virtual_keyboard.get_numbers_keyboard()
+                current_text = virtual_keyboard.get_current_text()
+                await callback_query.edit_message_text(
+                    f"🔢 **Sayı Klavyesi**\n\n"
+                    f"📝 **Metin:** {current_text if current_text else '(boş)'}",
+                    reply_markup=keyboard
+                )
+                await callback_query.answer("🔢 Sayı klavyesi")
+            return
+        
+        elif data == "vk_symbols":
+            if VIRTUAL_KEYBOARD_ENABLED:
+                keyboard = virtual_keyboard.get_symbols_keyboard()
+                current_text = virtual_keyboard.get_current_text()
+                await callback_query.edit_message_text(
+                    f"🌐 **Sembol Klavyesi**\n\n"
+                    f"📝 **Metin:** {current_text if current_text else '(boş)'}",
+                    reply_markup=keyboard
+                )
+                await callback_query.answer("🌐 Sembol klavyesi")
+            return
+        
+        elif data.startswith("vk_key_"):
+            if VIRTUAL_KEYBOARD_ENABLED:
+                virtual_keyboard.process_key(data)
+                current_text = virtual_keyboard.get_current_text()
+                await callback_query.answer(f"Yazıldı: {current_text[-1] if current_text else ''}")
+            return
+        
+        elif data == "vk_checkbox_menu":
+            if VIRTUAL_KEYBOARD_ENABLED:
+                keyboard = virtual_keyboard.get_checkbox_keyboard()
+                summary = virtual_keyboard.get_checkbox_summary()
+                await callback_query.edit_message_text(
+                    f"☑️ **Checkbox Alanı**\n\n{summary}",
+                    reply_markup=keyboard
+                )
+                await callback_query.answer("☑️ Checkbox menüsü")
+            return
+        
+        elif data == "vk_notepad":
+            if VIRTUAL_KEYBOARD_ENABLED:
+                keyboard = virtual_keyboard.get_notepad_keyboard()
+                summary = virtual_keyboard.get_notes_summary()
+                await callback_query.edit_message_text(
+                    f"📝 **Not Defteri**\n\n{summary}",
+                    reply_markup=keyboard
+                )
+                await callback_query.answer("📝 Not defteri")
+            return
+        
+        elif data == "vk_close":
+            await callback_query.message.delete()
+            await callback_query.answer("❌ Kapatıldı")
+            return
+        
+        # ======================
+        # ADMIN PANEL
+        # ======================
+        
+        elif data == "vk_admin_panel":
+            if ADMIN_PANEL_ENABLED and admin_panel.is_admin(user_id):
+                keyboard = admin_panel.get_admin_keyboard()
+                await callback_query.edit_message_text(
+                    "👑 **Admin Panel**\n\n"
+                    "Yönetim işlemlerini seçin:",
+                    reply_markup=keyboard
+                )
+                await callback_query.answer("👑 Admin panel")
+            else:
+                await callback_query.answer("❌ Admin yetkisi gerekli!", show_alert=True)
+            return
+        
+        elif data == "vk_admin_stats":
+            if ADMIN_PANEL_ENABLED and admin_panel.is_admin(user_id):
+                stats_text = admin_panel.get_admin_stats()
+                await callback_query.edit_message_text(stats_text)
+                await callback_query.answer("📊 İstatistikler yüklendi")
+            return
+        
+        elif data == "vk_admin_users":
+            if ADMIN_PANEL_ENABLED and admin_panel.is_admin(user_id):
+                users_text = admin_panel.get_user_list()
+                await callback_query.edit_message_text(users_text)
+                await callback_query.answer("👥 Kullanıcı listesi")
+            return
+        
+        elif data == "vk_admin_settings":
+            if ADMIN_PANEL_ENABLED and admin_panel.is_admin(user_id):
+                settings_text = admin_panel.get_settings()
+                await callback_query.edit_message_text(settings_text)
+                await callback_query.answer("⚙️ Ayarlar")
+            return
+        
+        # ======================
+        # İNDİRME CALLBACKS
+        # ======================
+        
+        elif data.startswith("mp3_") or data.startswith("mp4_"):
             parts = data.split("_")
             if len(parts) >= 3:
-                format_type = parts[0]  # mp3 or mp4
-                quality = parts[1]      # 128, 192, 360, etc.
-                url_id = "_".join(parts[2:])  # URL ID (underscore içerebilir)
+                format_type = parts[0]
+                quality = parts[1]
+                url_id = "_".join(parts[2:])
                 
-                # Cache'den URL al
                 url = get_cached_url(url_id)
                 if not url:
-                    # URL bulunamadı - kullanıcıya bilgi ver
-                    keyboard = [[InlineKeyboardButton("🔄 Linki Tekrar Gönder", callback_data="resend_url")]]
+                    keyboard = [[InlineKeyboardButton("🔄 Linki Tekrar Gönder", callback_data="start_menu")]]
                     await callback_query.edit_message_text(
                         "❌ **URL Bulunamadı!**\n\n"
-                        "Bot yeniden başlatıldığı için URL kaybedildi.\n"
-                        "Lütfen video linkini tekrar gönderin.",
-                        reply_markup=InlineKeyboardMarkup(keyboard),
-                        parse_mode=None
+                        "Bot yeniden başlatıldı, lütfen linki tekrar gönderin.",
+                        reply_markup=InlineKeyboardMarkup(keyboard)
                     )
-                    await callback_query.answer("❌ Lütfen linki tekrar gönderin.", show_alert=True)
+                    await callback_query.answer("❌ Link tekrar gönderin", show_alert=True)
                     return
                 
-                await callback_query.answer("📥 İndirme başlatılıyor...")
+                await callback_query.answer("📥 İndirme başlıyor...")
                 await download_video(client, message, url, format_type, quality)
-                return
+            return
         
-        # Diğer callback'ler
-        await callback_query.answer("🚀 Özellik yakında gelecek!")
+        # ======================
+        # VARSAYILAN
+        # ======================
+        
+        else:
+            await callback_query.answer("🚧 Bu özellik henüz hazır değil!")
         
     except Exception as e:
-        logger.error(f"Callback query hatası: {e}")
-        await callback_query.answer("❌ Hata oluştu!")
+        logger.error(f"Callback query hatası: {e}", exc_info=True)
+        await callback_query.answer("❌ Hata oluştu!", show_alert=True)
 
 ######################################
 #           SIGNAL HANDLER           #
