@@ -371,35 +371,37 @@ async def download_video(client, message, url, format_type, quality=None):
         if ADVANCED_FEATURES_ENABLED:
             platform = advanced_features.detect_platform(url)
         
-        # yt-dlp ayarları - YouTube bot koruması bypass
+        # yt-dlp ayarları - YouTube bot koruması bypass (Alternatif yöntem)
         ydl_opts = {
             'outtmpl': '/tmp/%(title)s.%(ext)s',  # Render.com'da /tmp kullan
             'noplaylist': True,
             'extract_flat': False,
             'writethumbnail': False,
             'writeinfojson': False,
-            'socket_timeout': 60,
-            'retries': 5,
-            'fragment_retries': 5,
+            'socket_timeout': 120,
+            'retries': 3,
+            'fragment_retries': 3,
             'skip_unavailable_fragments': True,
             'keep_fragments': False,
-            'no_warnings': False,
+            'no_warnings': True,
             'ignoreerrors': False,
-            # YouTube bot koruması için güçlü ayarlar
+            'quiet': True,
+            # YouTube bot koruması için alternatif ayarlar
             'extractor_args': {
                 'youtube': {
-                    'skip': ['dash', 'hls'],
-                    'player_skip': ['webpage'],
                     'player_client': ['android_music', 'android_creator', 'android', 'web'],
                     'comment_sort': ['top'],
                     'max_comments': [0],
                     'include_live_chat': False,
-                    'skip_download': False
+                    'skip_download': False,
+                    'age_limit': [0],
+                    'geo_bypass': True,
+                    'geo_bypass_country': 'US'
                 }
             },
             'http_headers': {
-                'User-Agent': 'Mozilla/5.0 (Linux; Android 10; SM-G973F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
                 'Accept-Language': 'en-US,en;q=0.9',
                 'Accept-Encoding': 'gzip, deflate, br',
                 'Connection': 'keep-alive',
@@ -409,14 +411,21 @@ async def download_video(client, message, url, format_type, quality=None):
                 'Sec-Fetch-Mode': 'navigate',
                 'Sec-Fetch-Site': 'none',
                 'Sec-Fetch-User': '?1',
-                'Upgrade-Insecure-Requests': '1'
+                'Upgrade-Insecure-Requests': '1',
+                'Cache-Control': 'no-cache',
+                'Pragma': 'no-cache'
             },
-            'sleep_interval': 3,
-            'max_sleep_interval': 15,
-            'sleep_interval_requests': 3,
-            'sleep_interval_subtitles': 3,
+            'sleep_interval': 5,
+            'max_sleep_interval': 20,
+            'sleep_interval_requests': 5,
+            'sleep_interval_subtitles': 5,
             'concurrent_fragment_downloads': 1,
-            'throttled_rate': '1M',
+            'throttled_rate': '500K',
+            # Alternatif çözümler
+            'cookiesfrombrowser': None,
+            'cookiefile': None,
+            'no_check_certificate': True,
+            'prefer_insecure': False,
         }
         
         # Format ayarları
@@ -441,9 +450,53 @@ async def download_video(client, message, url, format_type, quality=None):
         status_msg = await message.reply_text(f"{platform_emoji} **Video indiriliyor...**\n\nLütfen bekleyin...")
         
         start_time = time.time()
-        with YoutubeDL(ydl_opts) as ydl:
-            info_dict = ydl.extract_info(url, download=True)
-            file_name = ydl.prepare_filename(info_dict)
+        
+        # İlk deneme - normal yt-dlp
+        try:
+            with YoutubeDL(ydl_opts) as ydl:
+                info_dict = ydl.extract_info(url, download=True)
+                file_name = ydl.prepare_filename(info_dict)
+        except Exception as e:
+            logger.warning(f"İlk yt-dlp denemesi başarısız: {e}")
+            
+            # İkinci deneme - farklı ayarlarla
+            logger.info("Alternatif yt-dlp ayarları deneniyor...")
+            ydl_opts_alt = ydl_opts.copy()
+            ydl_opts_alt['extractor_args']['youtube']['player_client'] = ['android', 'web']
+            ydl_opts_alt['http_headers']['User-Agent'] = 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_7_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.2 Mobile/15E148 Safari/604.1'
+            
+            try:
+                with YoutubeDL(ydl_opts_alt) as ydl:
+                    info_dict = ydl.extract_info(url, download=True)
+                    file_name = ydl.prepare_filename(info_dict)
+            except Exception as e2:
+                logger.warning(f"İkinci yt-dlp denemesi başarısız: {e2}")
+                
+                # Üçüncü deneme - minimal ayarlarla
+                logger.info("Minimal yt-dlp ayarları deneniyor...")
+                ydl_opts_minimal = {
+                    'outtmpl': '/tmp/%(title)s.%(ext)s',
+                    'noplaylist': True,
+                    'extract_flat': False,
+                    'writethumbnail': False,
+                    'writeinfojson': False,
+                    'socket_timeout': 60,
+                    'retries': 2,
+                    'no_warnings': True,
+                    'quiet': True,
+                    'extractor_args': {
+                        'youtube': {
+                            'player_client': ['android', 'web']
+                        }
+                    },
+                    'http_headers': {
+                        'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'
+                    }
+                }
+                
+                with YoutubeDL(ydl_opts_minimal) as ydl:
+                    info_dict = ydl.extract_info(url, download=True)
+                    file_name = ydl.prepare_filename(info_dict)
             
             # Dosya uzantısını düzelt
             if format_type == 'mp3':
@@ -755,28 +808,30 @@ async def handle_fast_download(client, message, url):
             'extract_flat': False,
             'writethumbnail': False,
             'writeinfojson': False,
-            'socket_timeout': 60,
-            'retries': 5,
-            'fragment_retries': 5,
+            'socket_timeout': 120,
+            'retries': 3,
+            'fragment_retries': 3,
             'skip_unavailable_fragments': True,
             'keep_fragments': False,
-            'no_warnings': False,
+            'no_warnings': True,
             'ignoreerrors': False,
-            # YouTube bot koruması için güçlü ayarlar
+            'quiet': True,
+            # YouTube bot koruması için alternatif ayarlar
             'extractor_args': {
                 'youtube': {
-                    'skip': ['dash', 'hls'],
-                    'player_skip': ['webpage'],
                     'player_client': ['android_music', 'android_creator', 'android', 'web'],
                     'comment_sort': ['top'],
                     'max_comments': [0],
                     'include_live_chat': False,
-                    'skip_download': False
+                    'skip_download': False,
+                    'age_limit': [0],
+                    'geo_bypass': True,
+                    'geo_bypass_country': 'US'
                 }
             },
             'http_headers': {
-                'User-Agent': 'Mozilla/5.0 (Linux; Android 10; SM-G973F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
                 'Accept-Language': 'en-US,en;q=0.9',
                 'Accept-Encoding': 'gzip, deflate, br',
                 'Connection': 'keep-alive',
@@ -786,14 +841,21 @@ async def handle_fast_download(client, message, url):
                 'Sec-Fetch-Mode': 'navigate',
                 'Sec-Fetch-Site': 'none',
                 'Sec-Fetch-User': '?1',
-                'Upgrade-Insecure-Requests': '1'
+                'Upgrade-Insecure-Requests': '1',
+                'Cache-Control': 'no-cache',
+                'Pragma': 'no-cache'
             },
-            'sleep_interval': 3,
-            'max_sleep_interval': 15,
-            'sleep_interval_requests': 3,
-            'sleep_interval_subtitles': 3,
+            'sleep_interval': 5,
+            'max_sleep_interval': 20,
+            'sleep_interval_requests': 5,
+            'sleep_interval_subtitles': 5,
             'concurrent_fragment_downloads': 1,
-            'throttled_rate': '1M',
+            'throttled_rate': '500K',
+            # Alternatif çözümler
+            'cookiesfrombrowser': None,
+            'cookiefile': None,
+            'no_check_certificate': True,
+            'prefer_insecure': False,
         }
         
         # Platform emojisi
@@ -804,10 +866,62 @@ async def handle_fast_download(client, message, url):
         status_msg = await message.reply_text(f"{platform_emoji} **Hızlı İndirme Başladı!** ⚡\n\nLütfen bekleyin...")
         
         start_time = time.time()
-        with YoutubeDL(ydl_opts) as ydl:
-            info_dict = ydl.extract_info(url, download=True)
-            file_name = ydl.prepare_filename(info_dict)
-            file_name = file_name.rsplit(".", 1)[0] + ".mp3"
+        
+        # İlk deneme - normal yt-dlp
+        try:
+            with YoutubeDL(ydl_opts) as ydl:
+                info_dict = ydl.extract_info(url, download=True)
+                file_name = ydl.prepare_filename(info_dict)
+                file_name = file_name.rsplit(".", 1)[0] + ".mp3"
+        except Exception as e:
+            logger.warning(f"Hızlı indirme - İlk yt-dlp denemesi başarısız: {e}")
+            
+            # İkinci deneme - farklı ayarlarla
+            logger.info("Hızlı indirme - Alternatif yt-dlp ayarları deneniyor...")
+            ydl_opts_alt = ydl_opts.copy()
+            ydl_opts_alt['extractor_args']['youtube']['player_client'] = ['android', 'web']
+            ydl_opts_alt['http_headers']['User-Agent'] = 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_7_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.2 Mobile/15E148 Safari/604.1'
+            
+            try:
+                with YoutubeDL(ydl_opts_alt) as ydl:
+                    info_dict = ydl.extract_info(url, download=True)
+                    file_name = ydl.prepare_filename(info_dict)
+                    file_name = file_name.rsplit(".", 1)[0] + ".mp3"
+            except Exception as e2:
+                logger.warning(f"Hızlı indirme - İkinci yt-dlp denemesi başarısız: {e2}")
+                
+                # Üçüncü deneme - minimal ayarlarla
+                logger.info("Hızlı indirme - Minimal yt-dlp ayarları deneniyor...")
+                ydl_opts_minimal = {
+                    'format': 'bestaudio[ext=m4a]/bestaudio/best',
+                    'postprocessors': [{
+                        'key': 'FFmpegExtractAudio',
+                        'preferredcodec': 'mp3',
+                        'preferredquality': '192',
+                    }],
+                    'outtmpl': '%(title)s.%(ext)s',
+                    'noplaylist': True,
+                    'extract_flat': False,
+                    'writethumbnail': False,
+                    'writeinfojson': False,
+                    'socket_timeout': 60,
+                    'retries': 2,
+                    'no_warnings': True,
+                    'quiet': True,
+                    'extractor_args': {
+                        'youtube': {
+                            'player_client': ['android', 'web']
+                        }
+                    },
+                    'http_headers': {
+                        'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'
+                    }
+                }
+                
+                with YoutubeDL(ydl_opts_minimal) as ydl:
+                    info_dict = ydl.extract_info(url, download=True)
+                    file_name = ydl.prepare_filename(info_dict)
+                    file_name = file_name.rsplit(".", 1)[0] + ".mp3"
             
             # Dosya kontrolü
             if not os.path.exists(file_name):
