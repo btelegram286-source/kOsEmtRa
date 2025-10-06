@@ -80,23 +80,23 @@ except ImportError:
 
 try:
     from config import *
-    print("✅ Konfigürasyon dosyası başarıyla yüklendi.")
+    print("Konfigürasyon dosyası başarıyla yüklendi.")
     
     # Konfigürasyon doğrulaması
     if not validate_config():
-        print("❌ Konfigürasyon hataları var. Lütfen config.py dosyasını kontrol edin.")
+        print("Konfigürasyon hataları var. Lütfen config.py dosyasını kontrol edin.")
         sys.exit(1)
         
 except ImportError:
-    print("❌ config.py dosyası bulunamadı. Lütfen config.py dosyasını oluşturun.")
+    print("config.py dosyası bulunamadı. Lütfen config.py dosyasını oluşturun.")
     sys.exit(1)
 except Exception as e:
-    print(f"❌ Konfigürasyon yüklenirken hata: {e}")
+    print(f"Konfigürasyon yüklenirken hata: {e}")
     sys.exit(1)
 
 # API bilgilerini kontrol et
 if API_ID == 0000000 or not API_HASH or not BOT_TOKEN:
-    print("❌ Lütfen config.py dosyasında API bilgilerinizi doldurun.")
+    print("Lütfen config.py dosyasında API bilgilerinizi doldurun.")
     print("   - API_ID: Telegram API ID'niz")
     print("   - API_HASH: Telegram API Hash'iniz") 
     print("   - BOT_TOKEN: Bot token'ınız")

@@ -14,7 +14,7 @@ load_dotenv()
 ######################################
 
 # Environment variables'dan al, yoksa varsayılan değerler kullan
-print("🔍 Environment variables kontrol ediliyor...")
+print("Environment variables kontrol ediliyor...")
 print(f"API_ID: {os.getenv('API_ID', 'YOK')}")
 print(f"API_HASH: {os.getenv('API_HASH', 'YOK')}")
 print(f"BOT_TOKEN: {os.getenv('BOT_TOKEN', 'YOK')}")
