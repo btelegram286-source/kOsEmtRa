@@ -175,6 +175,11 @@ def webhook():
         logger.error(f"Webhook hatası: {e}")
         return 'ERROR', 500
 
+@web_app.route('/ping', methods=['GET'])
+def ping():
+    """Basit ping endpoint - Render.com'da bot'un aktif olduğunu kontrol etmek için"""
+    return "pong", 200
+
 def handle_webhook_update(update):
     """Webhook güncellemelerini işle"""
     try:
@@ -248,9 +253,9 @@ def keep_alive():
                 
         except Exception as e:
             logger.error(f"❌ Keep-alive hatası: {e}")
-        
-        # 10 dakika bekle
-        time.sleep(600)
+            
+        # 5 dakika bekle (daha sık ping)
+        time.sleep(300)
 
 # Keep-alive thread'ini başlat
 keep_alive_thread = threading.Thread(target=keep_alive, daemon=True)
