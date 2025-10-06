@@ -699,13 +699,19 @@ async def send_format_buttons(client, message):
     🔗 Kullanıcı metin mesajı gönderdiğinde URL kontrolü yapılır ve 
        uygun format seçenekleri sunulur.
     """
-    url = message.text.strip()
+    text = message.text.strip()
     
     try:
-        logger.info(f"Mesaj alındı: {url}")
+        logger.info(f"Mesaj alındı: {text}")
+        
+        # Sanatçı ismi ile arama kontrolü
+        if not any(domain in text.lower() for domain in ['youtube.com', 'youtu.be', 'tiktok.com', 'twitter.com', 'x.com', 'facebook.com', 'fb.watch', 'instagram.com']):
+            # URL değilse, sanatçı ismi olarak kabul et
+            await handle_artist_search(client, message, text)
+            return
         
         # Instagram kontrolü
-        if "instagram.com" in url.lower():
+        if "instagram.com" in text.lower():
             await message.reply_text(
                 "🚫 **Instagram Geçici Olarak Devre Dışı** 🚫\n\n"
                 "Instagram güvenlik önlemleri nedeniyle geçici olarak devre dışı bırakıldı.\n\n"
@@ -721,10 +727,13 @@ async def send_format_buttons(client, message):
             return
         
         # Hızlı indirme modu kontrolü
-        if url.lower().startswith(("fast:", "hızlı:", "quick:")):
-            url = url.split(":", 1)[1].strip()
+        if text.lower().startswith(("fast:", "hızlı:", "quick:")):
+            url = text.split(":", 1)[1].strip()
             await handle_fast_download(client, message, url)
             return
+        
+        # URL'yi text olarak kullan
+        url = text
         
         # Platform tespiti
         platform = None
@@ -747,43 +756,455 @@ async def send_format_buttons(client, message):
                 )
                 return
         
-        # URL'yi cache'e ekle
-        url_id = cache_url(url)
-        
-        # Format seçenekleri (kısa callback data ile)
-        keyboard = [
-            [
-                InlineKeyboardButton("🎵 MP3 (128kbps)", callback_data=f"mp3_128_{url_id}"),
-                InlineKeyboardButton("🎵 MP3 (192kbps)", callback_data=f"mp3_192_{url_id}")
-            ],
-            [
-                InlineKeyboardButton("🎵 MP3 (256kbps)", callback_data=f"mp3_256_{url_id}"),
-                InlineKeyboardButton("🎵 MP3 (320kbps)", callback_data=f"mp3_320_{url_id}")
-            ],
-            [
-                InlineKeyboardButton("📺 MP4 (360p)", callback_data=f"mp4_360_{url_id}"),
-                InlineKeyboardButton("📺 MP4 (480p)", callback_data=f"mp4_480_{url_id}")
-            ],
-            [
-                InlineKeyboardButton("📺 MP4 (720p)", callback_data=f"mp4_720_{url_id}"),
-                InlineKeyboardButton("📺 MP4 (1080p)", callback_data=f"mp4_1080_{url_id}")
-            ]
-        ]
-        
-        platform_emoji = "🎬"
-        if ADVANCED_FEATURES_ENABLED and platform:
-            platform_emoji = advanced_features.get_platform_emoji(platform)
-        
-        await message.reply_text(
-            f"{platform_emoji} **Platform Tespit Edildi: {platform.upper()}**\n\n"
-            f"📋 **Format seçin:**",
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode=None
-        )
+        # ReisMp3_bot gibi direkt indirme yap
+        await handle_direct_download(client, message, url, platform)
         
     except Exception as e:
         logger.error(f"Format butonları gönderilirken hata: {e}")
         await message.reply_text(f"❌ **Hata:** {e}")
+
+async def handle_direct_download(client, message, url, platform):
+    """
+    🚀 ReisMp3_bot gibi direkt indirme - format seçimi yapmadan
+    """
+    try:
+        logger.info(f"Direkt indirme: {url}")
+        
+        # Platform emojisi
+        platform_emoji = "🎬"
+        if ADVANCED_FEATURES_ENABLED and platform:
+            platform_emoji = advanced_features.get_platform_emoji(platform)
+        
+        # İndirme mesajı gönder
+        status_msg = await message.reply_text(f"{platform_emoji} **Video indiriliyor...**\n\nLütfen bekleyin...")
+        
+        # yt-dlp ayarları - YouTube bot koruması bypass (Alternatif yöntem)
+        ydl_opts = {
+            'outtmpl': '/tmp/%(title)s.%(ext)s',  # Render.com'da /tmp kullan
+            'noplaylist': True,
+            'extract_flat': False,
+            'writethumbnail': False,
+            'writeinfojson': False,
+            'socket_timeout': 120,
+            'retries': 3,
+            'fragment_retries': 3,
+            'skip_unavailable_fragments': True,
+            'keep_fragments': False,
+            'no_warnings': True,
+            'ignoreerrors': False,
+            'quiet': True,
+            # YouTube bot koruması için alternatif ayarlar
+            'extractor_args': {
+                'youtube': {
+                    'player_client': ['android_music', 'android_creator', 'android', 'web'],
+                    'comment_sort': ['top'],
+                    'max_comments': [0],
+                    'include_live_chat': False,
+                    'skip_download': False,
+                    'age_limit': [0],
+                    'geo_bypass': True,
+                    'geo_bypass_country': 'US'
+                }
+            },
+            'http_headers': {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Accept-Encoding': 'gzip, deflate, br',
+                'Connection': 'keep-alive',
+                'Referer': 'https://www.youtube.com/',
+                'Origin': 'https://www.youtube.com',
+                'Sec-Fetch-Dest': 'document',
+                'Sec-Fetch-Mode': 'navigate',
+                'Sec-Fetch-Site': 'none',
+                'Sec-Fetch-User': '?1',
+                'Upgrade-Insecure-Requests': '1',
+                'Cache-Control': 'no-cache',
+                'Pragma': 'no-cache'
+            },
+            'sleep_interval': 5,
+            'max_sleep_interval': 20,
+            'sleep_interval_requests': 5,
+            'sleep_interval_subtitles': 5,
+            'concurrent_fragment_downloads': 1,
+            'throttled_rate': '500K',
+            # Alternatif çözümler
+            'cookiesfrombrowser': None,
+            'cookiefile': None,
+            'no_check_certificate': True,
+            'prefer_insecure': False,
+        }
+        
+        # Format ayarları - MP3 olarak indir
+        ydl_opts['format'] = 'bestaudio[ext=m4a]/bestaudio/best'
+        ydl_opts['postprocessors'] = [{
+            'key': 'FFmpegExtractAudio',
+            'preferredcodec': 'mp3',
+            'preferredquality': '192',
+        }]
+        
+        start_time = time.time()
+        
+        # İlk deneme - normal yt-dlp
+        try:
+            with YoutubeDL(ydl_opts) as ydl:
+                info_dict = ydl.extract_info(url, download=True)
+                file_name = ydl.prepare_filename(info_dict)
+                file_name = file_name.rsplit(".", 1)[0] + ".mp3"
+        except Exception as e:
+            logger.warning(f"Direkt indirme - İlk yt-dlp denemesi başarısız: {e}")
+            
+            # İkinci deneme - farklı ayarlarla
+            logger.info("Direkt indirme - Alternatif yt-dlp ayarları deneniyor...")
+            ydl_opts_alt = ydl_opts.copy()
+            ydl_opts_alt['extractor_args']['youtube']['player_client'] = ['android', 'web']
+            ydl_opts_alt['http_headers']['User-Agent'] = 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_7_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.2 Mobile/15E148 Safari/604.1'
+            
+            try:
+                with YoutubeDL(ydl_opts_alt) as ydl:
+                    info_dict = ydl.extract_info(url, download=True)
+                    file_name = ydl.prepare_filename(info_dict)
+                    file_name = file_name.rsplit(".", 1)[0] + ".mp3"
+            except Exception as e2:
+                logger.warning(f"Direkt indirme - İkinci yt-dlp denemesi başarısız: {e2}")
+                
+                # Üçüncü deneme - minimal ayarlarla
+                logger.info("Direkt indirme - Minimal yt-dlp ayarları deneniyor...")
+                ydl_opts_minimal = {
+                    'format': 'bestaudio[ext=m4a]/bestaudio/best',
+                    'postprocessors': [{
+                        'key': 'FFmpegExtractAudio',
+                        'preferredcodec': 'mp3',
+                        'preferredquality': '192',
+                    }],
+                    'outtmpl': '/tmp/%(title)s.%(ext)s',
+                    'noplaylist': True,
+                    'extract_flat': False,
+                    'writethumbnail': False,
+                    'writeinfojson': False,
+                    'socket_timeout': 60,
+                    'retries': 2,
+                    'no_warnings': True,
+                    'quiet': True,
+                    'extractor_args': {
+                        'youtube': {
+                            'player_client': ['android', 'web']
+                        }
+                    },
+                    'http_headers': {
+                        'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'
+                    }
+                }
+                
+                with YoutubeDL(ydl_opts_minimal) as ydl:
+                    info_dict = ydl.extract_info(url, download=True)
+                    file_name = ydl.prepare_filename(info_dict)
+                    file_name = file_name.rsplit(".", 1)[0] + ".mp3"
+        
+        # Dosya kontrolü
+        if not os.path.exists(file_name):
+            # /tmp klasöründe ara
+            base_name = os.path.basename(file_name)
+            tmp_file = f"/tmp/{base_name}"
+            if os.path.exists(tmp_file):
+                file_name = tmp_file
+            else:
+                # Mevcut dizinde ara
+                current_dir_file = os.path.join(os.getcwd(), base_name)
+                if os.path.exists(current_dir_file):
+                    file_name = current_dir_file
+                else:
+                    raise Exception("Dosya indirilemedi!")
+        
+        # Thumbnail indirme
+        thumbnail_url = info_dict.get('thumbnail')
+        thumbnail_file = None
+        if thumbnail_url:
+            try:
+                thumbnail_file = f"/tmp/{os.path.basename(file_name)}_thumb.jpg"
+                response = requests.get(thumbnail_url)
+                with open(thumbnail_file, 'wb') as f:
+                    f.write(response.content)
+            except:
+                thumbnail_file = None
+        
+        # Dosya boyutu ve süre
+        file_size = os.path.getsize(file_name)
+        elapsed_time = time.time() - start_time
+        file_size_mb = file_size / (1024 * 1024)
+        
+        await status_msg.edit_text(
+            f"✅ **İndirme Tamamlandı!** ✅\n\n"
+            f"🎵 **Başlık:** {info_dict.get('title', 'Audio')}\n"
+            f"📁 **Dosya:** {os.path.basename(file_name)}\n"
+            f"📊 **Boyut:** {file_size_mb:.1f} MB\n"
+            f"⏱️ **Süre:** {int(elapsed_time)} saniye\n"
+            f"📤 **Gönderiliyor...**"
+        )
+        
+        # Dosya gönderme
+        title = f"{info_dict.get('title', 'Audio')} - MP3"
+        await send_file(client, message.chat.id, file_name, title, status_msg, thumbnail_file)
+        
+        # Geçici dosyaları temizle
+        try:
+            if thumbnail_file and os.path.exists(thumbnail_file):
+                os.remove(thumbnail_file)
+        except:
+            pass
+            
+    except Exception as e:
+        logger.error(f"Direkt indirme hatası: {e}", exc_info=True)
+        bot_stats['total_errors'] += 1
+        
+        # Hata türüne göre özel mesaj
+        error_msg = str(e).lower()
+        if "sign in to confirm" in error_msg or "bot" in error_msg:
+            await message.reply_text(
+                "❌ **YouTube Bot Koruması Tespit Edildi**\n\n"
+                "YouTube geçici olarak bot erişimini engelliyor.\n\n"
+                "🔄 **Çözümler:**\n"
+                "• Birkaç dakika bekleyip tekrar deneyin\n"
+                "• Farklı bir video linki deneyin\n"
+                "• Bot yeniden başlatılıyor...\n\n"
+                "⏱️ **Tahmini süre:** 5-10 dakika"
+            )
+        elif "429" in error_msg or "too many requests" in error_msg:
+            await message.reply_text(
+                "❌ **Çok Fazla İstek**\n\n"
+                "YouTube çok fazla istek aldığı için geçici olarak engelliyor.\n\n"
+                "🔄 **Çözüm:**\n"
+                "• 10-15 dakika bekleyin\n"
+                "• Daha sonra tekrar deneyin"
+            )
+        else:
+            await message.reply_text(
+                f"❌ **Video İndirme Hatası**\n\n"
+                f"**Hata:** {str(e)[:200]}...\n\n"
+                f"🔄 **Çözüm:**\n"
+                f"• Lütfen tekrar deneyin\n"
+                f"• Farklı bir video linki kullanın\n"
+                f"• Sorun devam ederse admin ile iletişime geçin"
+            )
+
+async def handle_artist_search(client, message, artist_name):
+    """
+    🎵 Sanatçı ismi ile YouTube'da arama yapıp en popüler sonucu indirir
+    """
+    try:
+        logger.info(f"Sanatçı arama: {artist_name}")
+        
+        # Arama mesajı gönder
+        search_msg = await message.reply_text(f"🔍 **'{artist_name}' aranıyor...**\n\nLütfen bekleyin...")
+        
+        # YouTube'da arama yap
+        search_query = f"ytsearch1:{artist_name}"
+        
+        # yt-dlp ile arama
+        ydl_opts = {
+            'format': 'bestaudio[ext=m4a]/bestaudio/best',
+            'postprocessors': [{
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': 'mp3',
+                'preferredquality': '192',
+            }],
+            'outtmpl': '/tmp/%(title)s.%(ext)s',
+            'noplaylist': True,
+            'extract_flat': False,
+            'writethumbnail': False,
+            'writeinfojson': False,
+            'socket_timeout': 120,
+            'retries': 3,
+            'fragment_retries': 3,
+            'skip_unavailable_fragments': True,
+            'keep_fragments': False,
+            'no_warnings': True,
+            'ignoreerrors': False,
+            'quiet': True,
+            'extractor_args': {
+                'youtube': {
+                    'player_client': ['android_music', 'android_creator', 'android', 'web'],
+                    'comment_sort': ['top'],
+                    'max_comments': [0],
+                    'include_live_chat': False,
+                    'skip_download': False,
+                    'age_limit': [0],
+                    'geo_bypass': True,
+                    'geo_bypass_country': 'US'
+                }
+            },
+            'http_headers': {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Accept-Encoding': 'gzip, deflate, br',
+                'Connection': 'keep-alive',
+                'Referer': 'https://www.youtube.com/',
+                'Origin': 'https://www.youtube.com',
+                'Sec-Fetch-Dest': 'document',
+                'Sec-Fetch-Mode': 'navigate',
+                'Sec-Fetch-Site': 'none',
+                'Sec-Fetch-User': '?1',
+                'Upgrade-Insecure-Requests': '1',
+                'Cache-Control': 'no-cache',
+                'Pragma': 'no-cache'
+            },
+            'sleep_interval': 5,
+            'max_sleep_interval': 20,
+            'sleep_interval_requests': 5,
+            'sleep_interval_subtitles': 5,
+            'concurrent_fragment_downloads': 1,
+            'throttled_rate': '500K',
+            'cookiesfrombrowser': None,
+            'cookiefile': None,
+            'no_check_certificate': True,
+            'prefer_insecure': False,
+        }
+        
+        start_time = time.time()
+        
+        # İlk deneme - normal yt-dlp
+        try:
+            with YoutubeDL(ydl_opts) as ydl:
+                info_dict = ydl.extract_info(search_query, download=True)
+                file_name = ydl.prepare_filename(info_dict)
+                file_name = file_name.rsplit(".", 1)[0] + ".mp3"
+        except Exception as e:
+            logger.warning(f"Sanatçı arama - İlk yt-dlp denemesi başarısız: {e}")
+            
+            # İkinci deneme - farklı ayarlarla
+            logger.info("Sanatçı arama - Alternatif yt-dlp ayarları deneniyor...")
+            ydl_opts_alt = ydl_opts.copy()
+            ydl_opts_alt['extractor_args']['youtube']['player_client'] = ['android', 'web']
+            ydl_opts_alt['http_headers']['User-Agent'] = 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_7_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.2 Mobile/15E148 Safari/604.1'
+            
+            try:
+                with YoutubeDL(ydl_opts_alt) as ydl:
+                    info_dict = ydl.extract_info(search_query, download=True)
+                    file_name = ydl.prepare_filename(info_dict)
+                    file_name = file_name.rsplit(".", 1)[0] + ".mp3"
+            except Exception as e2:
+                logger.warning(f"Sanatçı arama - İkinci yt-dlp denemesi başarısız: {e2}")
+                
+                # Üçüncü deneme - minimal ayarlarla
+                logger.info("Sanatçı arama - Minimal yt-dlp ayarları deneniyor...")
+                ydl_opts_minimal = {
+                    'format': 'bestaudio[ext=m4a]/bestaudio/best',
+                    'postprocessors': [{
+                        'key': 'FFmpegExtractAudio',
+                        'preferredcodec': 'mp3',
+                        'preferredquality': '192',
+                    }],
+                    'outtmpl': '/tmp/%(title)s.%(ext)s',
+                    'noplaylist': True,
+                    'extract_flat': False,
+                    'writethumbnail': False,
+                    'writeinfojson': False,
+                    'socket_timeout': 60,
+                    'retries': 2,
+                    'no_warnings': True,
+                    'quiet': True,
+                    'extractor_args': {
+                        'youtube': {
+                            'player_client': ['android', 'web']
+                        }
+                    },
+                    'http_headers': {
+                        'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'
+                    }
+                }
+                
+                with YoutubeDL(ydl_opts_minimal) as ydl:
+                    info_dict = ydl.extract_info(search_query, download=True)
+                    file_name = ydl.prepare_filename(info_dict)
+                    file_name = file_name.rsplit(".", 1)[0] + ".mp3"
+        
+        # Dosya kontrolü
+        if not os.path.exists(file_name):
+            # /tmp klasöründe ara
+            base_name = os.path.basename(file_name)
+            tmp_file = f"/tmp/{base_name}"
+            if os.path.exists(tmp_file):
+                file_name = tmp_file
+            else:
+                # Mevcut dizinde ara
+                current_dir_file = os.path.join(os.getcwd(), base_name)
+                if os.path.exists(current_dir_file):
+                    file_name = current_dir_file
+                else:
+                    raise Exception("Dosya indirilemedi!")
+        
+        # Thumbnail indirme
+        thumbnail_url = info_dict.get('thumbnail')
+        thumbnail_file = None
+        if thumbnail_url:
+            try:
+                thumbnail_file = f"/tmp/{os.path.basename(file_name)}_thumb.jpg"
+                response = requests.get(thumbnail_url)
+                with open(thumbnail_file, 'wb') as f:
+                    f.write(response.content)
+            except:
+                thumbnail_file = None
+        
+        # Dosya boyutu ve süre
+        file_size = os.path.getsize(file_name)
+        elapsed_time = time.time() - start_time
+        file_size_mb = file_size / (1024 * 1024)
+        
+        await search_msg.edit_text(
+            f"✅ **Arama Tamamlandı!** ✅\n\n"
+            f"🎵 **Sanatçı:** {artist_name}\n"
+            f"📁 **Dosya:** {os.path.basename(file_name)}\n"
+            f"📊 **Boyut:** {file_size_mb:.1f} MB\n"
+            f"⏱️ **Süre:** {int(elapsed_time)} saniye\n"
+            f"📤 **Gönderiliyor...**"
+        )
+        
+        # Dosya gönderme
+        title = f"{info_dict.get('title', 'Audio')} - {artist_name}"
+        await send_file(client, message.chat.id, file_name, title, search_msg, thumbnail_file)
+        
+        # Geçici dosyaları temizle
+        try:
+            if thumbnail_file and os.path.exists(thumbnail_file):
+                os.remove(thumbnail_file)
+        except:
+            pass
+            
+    except Exception as e:
+        logger.error(f"Sanatçı arama hatası: {e}", exc_info=True)
+        bot_stats['total_errors'] += 1
+        
+        # Hata türüne göre özel mesaj
+        error_msg = str(e).lower()
+        if "sign in to confirm" in error_msg or "bot" in error_msg:
+            await message.reply_text(
+                "❌ **YouTube Bot Koruması Tespit Edildi**\n\n"
+                "YouTube geçici olarak bot erişimini engelliyor.\n\n"
+                "🔄 **Çözümler:**\n"
+                "• Birkaç dakika bekleyip tekrar deneyin\n"
+                "• Farklı bir sanatçı ismi deneyin\n"
+                "• Bot yeniden başlatılıyor...\n\n"
+                "⏱️ **Tahmini süre:** 5-10 dakika"
+            )
+        elif "429" in error_msg or "too many requests" in error_msg:
+            await message.reply_text(
+                "❌ **Çok Fazla İstek**\n\n"
+                "YouTube çok fazla istek aldığı için geçici olarak engelliyor.\n\n"
+                "🔄 **Çözüm:**\n"
+                "• 10-15 dakika bekleyin\n"
+                "• Daha sonra tekrar deneyin"
+            )
+        else:
+            await message.reply_text(
+                f"❌ **Sanatçı Arama Hatası**\n\n"
+                f"**Sanatçı:** {artist_name}\n"
+                f"**Hata:** {str(e)[:200]}...\n\n"
+                f"🔄 **Çözüm:**\n"
+                f"• Farklı bir sanatçı ismi deneyin\n"
+                f"• Daha spesifik arama yapın\n"
+                f"• Örnek: 'Ed Sheeran Shape of You'"
+            )
 
 async def handle_fast_download(client, message, url):
     """
