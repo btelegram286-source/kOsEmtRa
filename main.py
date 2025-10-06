@@ -148,6 +148,22 @@ bot_stats = {
     'total_errors': 0
 }
 
+# URL cache sistemi (callback data boyutu limiti için)
+url_cache = {}
+url_cache_counter = 0
+
+def cache_url(url: str) -> str:
+    """URL'yi cache'e ekle ve ID döndür"""
+    global url_cache_counter
+    url_id = f"url_{url_cache_counter}"
+    url_cache[url_id] = url
+    url_cache_counter += 1
+    return url_id
+
+def get_cached_url(url_id: str) -> str:
+    """Cache'den URL al"""
+    return url_cache.get(url_id, '')
+
 ######################################
 #          FONKSİYONLAR             #
 ######################################
@@ -484,23 +500,26 @@ async def send_format_buttons(client, message):
             )
             return
         
-        # Format seçenekleri
+        # URL'yi cache'e ekle
+        url_id = cache_url(url)
+        
+        # Format seçenekleri (kısa callback data ile)
         keyboard = [
             [
-                InlineKeyboardButton("🎵 MP3 (128kbps)", callback_data=f"download_mp3_128_{url}"),
-                InlineKeyboardButton("🎵 MP3 (192kbps)", callback_data=f"download_mp3_192_{url}")
+                InlineKeyboardButton("🎵 MP3 (128kbps)", callback_data=f"dl_mp3_128_{url_id}"),
+                InlineKeyboardButton("🎵 MP3 (192kbps)", callback_data=f"dl_mp3_192_{url_id}")
             ],
             [
-                InlineKeyboardButton("🎵 MP3 (256kbps)", callback_data=f"download_mp3_256_{url}"),
-                InlineKeyboardButton("🎵 MP3 (320kbps)", callback_data=f"download_mp3_320_{url}")
+                InlineKeyboardButton("🎵 MP3 (256kbps)", callback_data=f"dl_mp3_256_{url_id}"),
+                InlineKeyboardButton("🎵 MP3 (320kbps)", callback_data=f"dl_mp3_320_{url_id}")
             ],
             [
-                InlineKeyboardButton("📺 MP4 (360p)", callback_data=f"download_mp4_360_{url}"),
-                InlineKeyboardButton("📺 MP4 (480p)", callback_data=f"download_mp4_480_{url}")
+                InlineKeyboardButton("📺 MP4 (360p)", callback_data=f"dl_mp4_360_{url_id}"),
+                InlineKeyboardButton("📺 MP4 (480p)", callback_data=f"dl_mp4_480_{url_id}")
             ],
             [
-                InlineKeyboardButton("📺 MP4 (720p)", callback_data=f"download_mp4_720_{url}"),
-                InlineKeyboardButton("📺 MP4 (1080p)", callback_data=f"download_mp4_1080_{url}")
+                InlineKeyboardButton("📺 MP4 (720p)", callback_data=f"dl_mp4_720_{url_id}"),
+                InlineKeyboardButton("📺 MP4 (1080p)", callback_data=f"dl_mp4_1080_{url_id}")
             ]
         ]
         
@@ -629,12 +648,18 @@ async def handle_callback_query(client, callback_query):
             return
         
         # Download callbacks
-        if data.startswith("download_"):
+        if data.startswith("dl_"):
             parts = data.split("_")
             if len(parts) >= 4:
                 format_type = parts[1]  # mp3 or mp4
                 quality = parts[2]     # 128, 192, 360, etc.
-                url = "_".join(parts[3:])  # URL
+                url_id = parts[3]      # URL ID
+                
+                # Cache'den URL al
+                url = get_cached_url(url_id)
+                if not url:
+                    await callback_query.answer("❌ URL bulunamadı. Lütfen tekrar gönderin.", show_alert=True)
+                    return
                 
                 await callback_query.answer("📥 İndirme başlatılıyor...")
                 await download_video(client, message, url, format_type, quality)
