@@ -27,6 +27,12 @@ from yt_dlp import YoutubeDL
 # MoviePy import'u kaldırıldı - Render.com'da sorun çıkarıyor
 MOVIEPY_AVAILABLE = False
 
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
 try:
     from tqdm import tqdm
 except ImportError:
@@ -155,10 +161,9 @@ async def send_file(client, chat_id, video_file, video_title, waiting_message, t
         start_time = time.time()
         last_update_time = start_time
 
-        with VideoFileClip(video_file) as video:
-            duration = int(video.duration)
-            width = int(video.size[0])
-            height = int(video.size[1])
+        duration = 0
+        width = 0
+        height = 0
 
         async def progress_callback(current, total):
             nonlocal last_update_time

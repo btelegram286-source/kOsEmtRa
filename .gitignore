@@ -1,0 +1,76 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.pythonlibs/
+
+# PyCharm
+.idea/
+
+# VS Code
+.vscode/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# Telegram bot session files
+*.session
+*.session-journal
+
+# Downloaded files
+downloads/
+temp/
+*.mp3
+*.mp4
+*.avi
+*.mkv
+*.webm
+*.m4a
+
+# Bot data files
+bot_stats.json
+admin_users.json
+bot_settings.json
+
+# Logs
+*.log
+
+# Thumbnails
+*_thumb.jpg
+*_thumb.png
+
+# OS
+.DS_Store
+Thumbs.db
