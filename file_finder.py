@@ -5,7 +5,7 @@ logger = logging.getLogger(__name__)
 
 def find_downloaded_file(original_file_path, logger_context=""):
     """
-    İndirilen dosyayı farklı konumlarda arar
+    İndirilen dosyayı farklı konumlarda arar - Render.com uyumlu
     """
     logger.info(f"{logger_context} - Aranan dosya: {original_file_path}")
     
@@ -18,7 +18,7 @@ def find_downloaded_file(original_file_path, logger_context=""):
     base_name = os.path.basename(original_file_path)
     logger.warning(f"{logger_context} - Dosya bulunamadı: {original_file_path}")
     
-    # 1. /tmp klasöründe ara
+    # 1. /tmp klasöründe ara (Render.com ana dizin)
     tmp_file = f"/tmp/{base_name}"
     if os.path.exists(tmp_file):
         logger.info(f"✅ {logger_context} - Dosya /tmp'de bulundu: {tmp_file}")
@@ -30,27 +30,38 @@ def find_downloaded_file(original_file_path, logger_context=""):
         logger.info(f"✅ {logger_context} - Dosya mevcut dizinde bulundu: {current_dir_file}")
         return current_dir_file
     
-    # 3. Tüm olası uzantıları dene
+    # 3. Render.com'da /opt/render/project/src/ dizininde ara
+    render_file = f"/opt/render/project/src/{base_name}"
+    if os.path.exists(render_file):
+        logger.info(f"✅ {logger_context} - Dosya Render dizininde bulundu: {render_file}")
+        return render_file
+    
+    # 4. Tüm olası uzantıları dene
     possible_extensions = ['.mp3', '.m4a', '.webm', '.mp4']
     for ext in possible_extensions:
-        test_file = original_file_path.rsplit('.', 1)[0] + ext
-        if os.path.exists(test_file):
-            logger.info(f"✅ {logger_context} - Dosya farklı uzantıyla bulundu: {test_file}")
-            return test_file
+        # Orijinal dosya adından uzantıyı çıkar
+        base_without_ext = original_file_path.rsplit('.', 1)[0] if '.' in original_file_path else original_file_path
+        test_file = base_without_ext + ext
+        
+        # Farklı konumlarda dene
+        for test_path in [test_file, f"/tmp/{os.path.basename(test_file)}", f"/opt/render/project/src/{os.path.basename(test_file)}"]:
+            if os.path.exists(test_path):
+                logger.info(f"✅ {logger_context} - Dosya farklı uzantıyla bulundu: {test_path}")
+                return test_path
     
-    # 4. /tmp klasöründe en son MP3 dosyasını bul
+    # 5. /tmp klasöründe en son MP3 dosyasını bul
     try:
         tmp_files = os.listdir('/tmp')
         mp3_files = [f for f in tmp_files if f.endswith('.mp3')]
         if mp3_files:
             latest_file = max(mp3_files, key=lambda x: os.path.getctime(os.path.join('/tmp', x)))
             latest_path = f"/tmp/{latest_file}"
-            logger.info(f"✅ {logger_context} - En son MP3 dosyası bulundu: {latest_path}")
+            logger.info(f"✅ {logger_context} - En son MP3 dosyası /tmp'de bulundu: {latest_path}")
             return latest_path
     except Exception as e:
         logger.error(f"{logger_context} - /tmp klasörü listelenemedi: {e}")
     
-    # 5. Mevcut dizinde en son MP3 dosyasını bul
+    # 6. Mevcut dizinde en son MP3 dosyasını bul
     try:
         current_files = os.listdir(os.getcwd())
         mp3_files = [f for f in current_files if f.endswith('.mp3')]
@@ -61,6 +72,18 @@ def find_downloaded_file(original_file_path, logger_context=""):
             return latest_path
     except Exception as e:
         logger.error(f"{logger_context} - Mevcut dizin listelenemedi: {e}")
+    
+    # 7. Render.com proje dizininde en son MP3 dosyasını bul
+    try:
+        render_files = os.listdir('/opt/render/project/src')
+        mp3_files = [f for f in render_files if f.endswith('.mp3')]
+        if mp3_files:
+            latest_file = max(mp3_files, key=lambda x: os.path.getctime(os.path.join('/opt/render/project/src', x)))
+            latest_path = f"/opt/render/project/src/{latest_file}"
+            logger.info(f"✅ {logger_context} - En son MP3 dosyası Render dizininde bulundu: {latest_path}")
+            return latest_path
+    except Exception as e:
+        logger.error(f"{logger_context} - Render dizin listelenemedi: {e}")
     
     # Dosya bulunamadı
     raise Exception(f"{logger_context} - Dosya hiçbir yerde bulunamadı. Aranan: {original_file_path}")
