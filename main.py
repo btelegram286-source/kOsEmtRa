@@ -201,6 +201,16 @@ def stats():
         }
     })
 
+@web_app.route('/test')
+def test():
+    """Test endpoint - bot durumunu kontrol et"""
+    return jsonify({
+        'status': 'Bot çalışıyor',
+        'message': 'Test başarılı! Bot aktif.',
+        'timestamp': time.time(),
+        'version': '2.0.0'
+    })
+
 # Bot istatistikleri
 bot_stats = {
     'start_time': time.time(),
@@ -361,15 +371,20 @@ async def download_video(client, message, url, format_type, quality=None):
         if ADVANCED_FEATURES_ENABLED:
             platform = advanced_features.detect_platform(url)
         
-        # yt-dlp ayarları
+        # yt-dlp ayarları - YouTube bot koruması bypass
         ydl_opts = {
             'outtmpl': '/tmp/%(title)s.%(ext)s',  # Render.com'da /tmp kullan
             'noplaylist': True,
             'extract_flat': False,
             'writethumbnail': False,
             'writeinfojson': False,
-            'socket_timeout': 30,
-            'retries': 3,
+            'socket_timeout': 60,
+            'retries': 5,
+            'fragment_retries': 5,
+            'skip_unavailable_fragments': True,
+            'keep_fragments': False,
+            'no_warnings': False,
+            'ignoreerrors': False,
             # YouTube bot koruması için güçlü ayarlar
             'extractor_args': {
                 'youtube': {
@@ -377,26 +392,31 @@ async def download_video(client, message, url, format_type, quality=None):
                     'player_skip': ['webpage'],
                     'player_client': ['android_music', 'android_creator', 'android', 'web'],
                     'comment_sort': ['top'],
-                    'max_comments': [0]
+                    'max_comments': [0],
+                    'include_live_chat': False,
+                    'skip_download': False
                 }
             },
             'http_headers': {
-                'User-Agent': 'Mozilla/5.0 (Linux; Android 10; SM-G973F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                'Accept-Language': 'en-us,en;q=0.5',
-                'Accept-Encoding': 'gzip, deflate',
-                'Accept-Charset': 'ISO-8859-1,utf-8;q=0.7,*;q=0.7',
+                'User-Agent': 'Mozilla/5.0 (Linux; Android 10; SM-G973F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Accept-Encoding': 'gzip, deflate, br',
                 'Connection': 'keep-alive',
                 'Referer': 'https://www.youtube.com/',
-                'Origin': 'https://www.youtube.com'
+                'Origin': 'https://www.youtube.com',
+                'Sec-Fetch-Dest': 'document',
+                'Sec-Fetch-Mode': 'navigate',
+                'Sec-Fetch-Site': 'none',
+                'Sec-Fetch-User': '?1',
+                'Upgrade-Insecure-Requests': '1'
             },
-            'sleep_interval': 2,
-            'max_sleep_interval': 10,
-            'sleep_interval_requests': 2,
-            'sleep_interval_subtitles': 2,
-            'fragment_retries': 3,
-            'skip_unavailable_fragments': True,
-            'keep_fragments': False,
+            'sleep_interval': 3,
+            'max_sleep_interval': 15,
+            'sleep_interval_requests': 3,
+            'sleep_interval_subtitles': 3,
+            'concurrent_fragment_downloads': 1,
+            'throttled_rate': '1M',
         }
         
         # Format ayarları
@@ -487,8 +507,46 @@ async def download_video(client, message, url, format_type, quality=None):
                 pass
                 
     except Exception as e:
-        logger.error(f"Video indirme hatası: {e}")
-        await message.reply_text(f"❌ **Video indirme hatası:** {e}")
+        logger.error(f"Video indirme hatası: {e}", exc_info=True)
+        bot_stats['total_errors'] += 1
+        
+        # Hata türüne göre özel mesaj
+        error_msg = str(e).lower()
+        if "sign in to confirm" in error_msg or "bot" in error_msg:
+            await message.reply_text(
+                "❌ **YouTube Bot Koruması Tespit Edildi**\n\n"
+                "YouTube geçici olarak bot erişimini engelliyor.\n\n"
+                "🔄 **Çözümler:**\n"
+                "• Birkaç dakika bekleyip tekrar deneyin\n"
+                "• Farklı bir video linki deneyin\n"
+                "• Bot yeniden başlatılıyor...\n\n"
+                "⏱️ **Tahmini süre:** 5-10 dakika"
+            )
+        elif "429" in error_msg or "too many requests" in error_msg:
+            await message.reply_text(
+                "❌ **Çok Fazla İstek**\n\n"
+                "YouTube çok fazla istek aldığı için geçici olarak engelliyor.\n\n"
+                "🔄 **Çözüm:**\n"
+                "• 10-15 dakika bekleyin\n"
+                "• Daha sonra tekrar deneyin"
+            )
+        elif "not found" in error_msg or "unavailable" in error_msg:
+            await message.reply_text(
+                "❌ **Video Bulunamadı**\n\n"
+                "Bu video mevcut değil veya erişim engellenmiş.\n\n"
+                "🔄 **Çözüm:**\n"
+                "• Video linkinin doğru olduğundan emin olun\n"
+                "• Farklı bir video deneyin"
+            )
+        else:
+            await message.reply_text(
+                f"❌ **Video İndirme Hatası**\n\n"
+                f"**Hata:** {str(e)[:200]}...\n\n"
+                f"🔄 **Çözüm:**\n"
+                f"• Lütfen tekrar deneyin\n"
+                f"• Farklı bir video linki kullanın\n"
+                f"• Sorun devam ederse admin ile iletişime geçin"
+            )
 
 ######################################
 #           MESAJ HANDLERS           #
@@ -697,8 +755,13 @@ async def handle_fast_download(client, message, url):
             'extract_flat': False,
             'writethumbnail': False,
             'writeinfojson': False,
-            'socket_timeout': 30,
-            'retries': 3,
+            'socket_timeout': 60,
+            'retries': 5,
+            'fragment_retries': 5,
+            'skip_unavailable_fragments': True,
+            'keep_fragments': False,
+            'no_warnings': False,
+            'ignoreerrors': False,
             # YouTube bot koruması için güçlü ayarlar
             'extractor_args': {
                 'youtube': {
@@ -706,26 +769,31 @@ async def handle_fast_download(client, message, url):
                     'player_skip': ['webpage'],
                     'player_client': ['android_music', 'android_creator', 'android', 'web'],
                     'comment_sort': ['top'],
-                    'max_comments': [0]
+                    'max_comments': [0],
+                    'include_live_chat': False,
+                    'skip_download': False
                 }
             },
             'http_headers': {
-                'User-Agent': 'Mozilla/5.0 (Linux; Android 10; SM-G973F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                'Accept-Language': 'en-us,en;q=0.5',
-                'Accept-Encoding': 'gzip, deflate',
-                'Accept-Charset': 'ISO-8859-1,utf-8;q=0.7,*;q=0.7',
+                'User-Agent': 'Mozilla/5.0 (Linux; Android 10; SM-G973F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Accept-Encoding': 'gzip, deflate, br',
                 'Connection': 'keep-alive',
                 'Referer': 'https://www.youtube.com/',
-                'Origin': 'https://www.youtube.com'
+                'Origin': 'https://www.youtube.com',
+                'Sec-Fetch-Dest': 'document',
+                'Sec-Fetch-Mode': 'navigate',
+                'Sec-Fetch-Site': 'none',
+                'Sec-Fetch-User': '?1',
+                'Upgrade-Insecure-Requests': '1'
             },
-            'sleep_interval': 2,
-            'max_sleep_interval': 10,
-            'sleep_interval_requests': 2,
-            'sleep_interval_subtitles': 2,
-            'fragment_retries': 3,
-            'skip_unavailable_fragments': True,
-            'keep_fragments': False,
+            'sleep_interval': 3,
+            'max_sleep_interval': 15,
+            'sleep_interval_requests': 3,
+            'sleep_interval_subtitles': 3,
+            'concurrent_fragment_downloads': 1,
+            'throttled_rate': '1M',
         }
         
         # Platform emojisi
@@ -775,8 +843,37 @@ async def handle_fast_download(client, message, url):
             await send_file(client, message.chat.id, file_name, title, status_msg, thumbnail_file)
             
     except Exception as e:
-        logger.error(f"Hızlı indirme hatası: {e}")
-        await message.reply_text(f"❌ **Hızlı İndirme Hatası:** {e}")
+        logger.error(f"Hızlı indirme hatası: {e}", exc_info=True)
+        bot_stats['total_errors'] += 1
+        
+        # Hata türüne göre özel mesaj
+        error_msg = str(e).lower()
+        if "sign in to confirm" in error_msg or "bot" in error_msg:
+            await message.reply_text(
+                "❌ **YouTube Bot Koruması Tespit Edildi**\n\n"
+                "YouTube geçici olarak bot erişimini engelliyor.\n\n"
+                "🔄 **Çözümler:**\n"
+                "• Birkaç dakika bekleyip tekrar deneyin\n"
+                "• Farklı bir video linki deneyin\n"
+                "• Bot yeniden başlatılıyor...\n\n"
+                "⏱️ **Tahmini süre:** 5-10 dakika"
+            )
+        elif "429" in error_msg or "too many requests" in error_msg:
+            await message.reply_text(
+                "❌ **Çok Fazla İstek**\n\n"
+                "YouTube çok fazla istek aldığı için geçici olarak engelliyor.\n\n"
+                "🔄 **Çözüm:**\n"
+                "• 10-15 dakika bekleyin\n"
+                "• Daha sonra tekrar deneyin"
+            )
+        else:
+            await message.reply_text(
+                f"❌ **Hızlı İndirme Hatası**\n\n"
+                f"**Hata:** {str(e)[:200]}...\n\n"
+                f"🔄 **Çözüm:**\n"
+                f"• Lütfen tekrar deneyin\n"
+                f"• Farklı bir video linki kullanın"
+            )
 
 ######################################
 #         CALLBACK HANDLERS          #
