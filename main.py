@@ -657,36 +657,31 @@ def signal_handler(sig, frame):
     print("\n🚪 Kapat komutu alındı. Bot durduruluyor...")
     if app:
         try:
-            asyncio.run(app.stop())
+            # Çalışan loop'u kullan
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                loop.create_task(app.stop())
+            else:
+                loop.run_until_complete(app.stop())
         except Exception as e:
-            print(f"❌ Durdurma sırasında hata: {e}")
+            print(f"⚠️ Durdurma uyarısı: {e}")
     sys.exit(0)
 
 def run_bot():
     """Bot'u çalıştır"""
     try:
         logger.info("🚀 Bot başlatılıyor...")
-        # Thread içinde yeni event loop oluştur
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        
-        # Bot'u asenkron olarak başlat
-        async def start_bot():
-            await app.start()
-            logger.info("✅ Bot başarıyla başlatıldı!")
-            await asyncio.Event().wait()  # Sonsuz bekle
-        
-        loop.run_until_complete(start_bot())
+        app.run()
+        logger.info("✅ Bot başarıyla başlatıldı!")
     except Exception as e:
         logger.critical(f"🚨 Bot çalıştırılırken kritik hata: {e}", exc_info=True)
-        sys.exit(1)
 
 def run_web_server():
     """Web sunucusunu çalıştır (Replit/Render.com için)"""
     try:
         logger.info("🌐 Web sunucusu başlatılıyor...")
         port = int(os.getenv('PORT', 5000))
-        web_app.run(host='0.0.0.0', port=port, debug=False)
+        web_app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
     except Exception as e:
         logger.critical(f"🚨 Web sunucusu başlatılırken hata: {e}", exc_info=True)
 
@@ -697,9 +692,9 @@ if __name__ == "__main__":
     # Hem bot hem web sunucusunu çalıştır
     import threading
     
-    # Bot'u ayrı thread'de çalıştır
-    bot_thread = threading.Thread(target=run_bot, daemon=True)
-    bot_thread.start()
+    # Web sunucusunu ayrı thread'de çalıştır (daemon=False)
+    web_thread = threading.Thread(target=run_web_server, daemon=False)
+    web_thread.start()
     
-    # Web sunucusunu ana thread'de çalıştır
-    run_web_server()
+    # Bot'u ana thread'de çalıştır (asyncio için daha güvenli)
+    run_bot()
