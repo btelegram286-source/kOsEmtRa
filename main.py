@@ -704,9 +704,49 @@ async def send_format_buttons(client, message):
     try:
         logger.info(f"Mesaj alındı: {text}")
         
-        # Sanatçı ismi ile arama kontrolü
-        if not any(domain in text.lower() for domain in ['youtube.com', 'youtu.be', 'tiktok.com', 'twitter.com', 'x.com', 'facebook.com', 'fb.watch', 'instagram.com']):
-            # URL değilse, sanatçı ismi olarak kabul et
+        # Bot mesajlarını filtrele - sonsuz döngüyü önle
+        if (text.startswith('❌') or 
+            text.startswith('🔍') or 
+            text.startswith('✅') or
+            text.startswith('🔄') or
+            text.startswith('⏱️') or
+            text.startswith('📊') or
+            text.startswith('📁') or
+            text.startswith('🎵') or
+            text.startswith('📤') or
+            text.startswith('Lütfen bekleyin') or
+            text.startswith('Hata:') or
+            text.startswith('**Hata:**') or
+            text.startswith('**Sanatçı:**') or
+            text.startswith('**Çözüm:**') or
+            text.startswith('•') or
+            text.startswith('Örnek:') or
+            'YouTube Bot Koruması' in text or
+            'Sanatçı Arama Hatası' in text or
+            'Video İndirme Hatası' in text or
+            'Çok Fazla İstek' in text):
+            logger.info("Bot mesajı filtrelendi, işlenmeyecek")
+            return
+        
+        # Sanatçı ismi ile arama kontrolü - hata mesajlarını filtrele
+        if (not any(domain in text.lower() for domain in ['youtube.com', 'youtu.be', 'tiktok.com', 'twitter.com', 'x.com', 'facebook.com', 'fb.watch', 'instagram.com']) 
+            and not text.startswith('❌') 
+            and not text.startswith('🔍') 
+            and not text.startswith('✅')
+            and not text.startswith('🔄')
+            and not text.startswith('⏱️')
+            and not text.startswith('📊')
+            and not text.startswith('📁')
+            and not text.startswith('🎵')
+            and not text.startswith('📤')
+            and not text.startswith('Lütfen bekleyin')
+            and not text.startswith('Hata:')
+            and not text.startswith('**Hata:**')
+            and not text.startswith('**Sanatçı:**')
+            and not text.startswith('**Çözüm:**')
+            and not text.startswith('•')
+            and not text.startswith('Örnek:')):
+            # URL değilse ve hata mesajı değilse, sanatçı ismi olarak kabul et
             await handle_artist_search(client, message, text)
             return
         
@@ -1139,35 +1179,39 @@ async def handle_direct_download(client, message, url, platform):
         logger.error(f"Direkt indirme hatası: {e}", exc_info=True)
         bot_stats['total_errors'] += 1
         
-        # Hata türüne göre özel mesaj
-        error_msg = str(e).lower()
-        if "sign in to confirm" in error_msg or "bot" in error_msg:
-            await message.reply_text(
-                "❌ **YouTube Bot Koruması Tespit Edildi**\n\n"
-                "YouTube geçici olarak bot erişimini engelliyor.\n\n"
-                "🔄 **Çözümler:**\n"
-                "• Birkaç dakika bekleyip tekrar deneyin\n"
-                "• Farklı bir video linki deneyin\n"
-                "• Bot yeniden başlatılıyor...\n\n"
-                "⏱️ **Tahmini süre:** 5-10 dakika"
-            )
-        elif "429" in error_msg or "too many requests" in error_msg:
-            await message.reply_text(
-                "❌ **Çok Fazla İstek**\n\n"
-                "YouTube çok fazla istek aldığı için geçici olarak engelliyor.\n\n"
-                "🔄 **Çözüm:**\n"
-                "• 10-15 dakika bekleyin\n"
-                "• Daha sonra tekrar deneyin"
-            )
-        else:
-            await message.reply_text(
-                f"❌ **Video İndirme Hatası**\n\n"
-                f"**Hata:** {str(e)[:200]}...\n\n"
-                f"🔄 **Çözüm:**\n"
-                f"• Lütfen tekrar deneyin\n"
-                f"• Farklı bir video linki kullanın\n"
-                f"• Sorun devam ederse admin ile iletişime geçin"
-            )
+        # Hata türüne göre özel mesaj - sadece bir kez gönder
+        try:
+            error_msg = str(e).lower()
+            if "sign in to confirm" in error_msg or "bot" in error_msg:
+                await message.reply_text(
+                    "❌ **YouTube Bot Koruması Tespit Edildi**\n\n"
+                    "YouTube geçici olarak bot erişimini engelliyor.\n\n"
+                    "🔄 **Çözümler:**\n"
+                    "• Birkaç dakika bekleyip tekrar deneyin\n"
+                    "• Farklı bir video linki deneyin\n"
+                    "• Bot yeniden başlatılıyor...\n\n"
+                    "⏱️ **Tahmini süre:** 5-10 dakika"
+                )
+            elif "429" in error_msg or "too many requests" in error_msg:
+                await message.reply_text(
+                    "❌ **Çok Fazla İstek**\n\n"
+                    "YouTube çok fazla istek aldığı için geçici olarak engelliyor.\n\n"
+                    "🔄 **Çözüm:**\n"
+                    "• 10-15 dakika bekleyin\n"
+                    "• Daha sonra tekrar deneyin"
+                )
+            else:
+                await message.reply_text(
+                    f"❌ **Video İndirme Hatası**\n\n"
+                    f"**Hata:** {str(e)[:100]}...\n\n"
+                    f"🔄 **Çözüm:**\n"
+                    f"• Lütfen tekrar deneyin\n"
+                    f"• Farklı bir video linki kullanın\n"
+                    f"• Sorun devam ederse admin ile iletişime geçin"
+                )
+        except Exception as reply_error:
+            logger.error(f"Hata mesajı gönderilemedi: {reply_error}")
+            # Hata mesajı gönderilemezse sessizce geç
 
 async def handle_artist_search(client, message, artist_name):
     """
@@ -1539,36 +1583,40 @@ async def handle_artist_search(client, message, artist_name):
         logger.error(f"Sanatçı arama hatası: {e}", exc_info=True)
         bot_stats['total_errors'] += 1
         
-        # Hata türüne göre özel mesaj
-        error_msg = str(e).lower()
-        if "sign in to confirm" in error_msg or "bot" in error_msg:
-            await message.reply_text(
-                "❌ **YouTube Bot Koruması Tespit Edildi**\n\n"
-                "YouTube geçici olarak bot erişimini engelliyor.\n\n"
-                "🔄 **Çözümler:**\n"
-                "• Birkaç dakika bekleyip tekrar deneyin\n"
-                "• Farklı bir sanatçı ismi deneyin\n"
-                "• Bot yeniden başlatılıyor...\n\n"
-                "⏱️ **Tahmini süre:** 5-10 dakika"
-            )
-        elif "429" in error_msg or "too many requests" in error_msg:
-            await message.reply_text(
-                "❌ **Çok Fazla İstek**\n\n"
-                "YouTube çok fazla istek aldığı için geçici olarak engelliyor.\n\n"
-                "🔄 **Çözüm:**\n"
-                "• 10-15 dakika bekleyin\n"
-                "• Daha sonra tekrar deneyin"
-            )
-        else:
-            await message.reply_text(
-                f"❌ **Sanatçı Arama Hatası**\n\n"
-                f"**Sanatçı:** {artist_name}\n"
-                f"**Hata:** {str(e)[:200]}...\n\n"
-                f"🔄 **Çözüm:**\n"
-                f"• Farklı bir sanatçı ismi deneyin\n"
-                f"• Daha spesifik arama yapın\n"
-                f"• Örnek: 'Ed Sheeran Shape of You'"
-            )
+        # Hata türüne göre özel mesaj - sadece bir kez gönder
+        try:
+            error_msg = str(e).lower()
+            if "sign in to confirm" in error_msg or "bot" in error_msg:
+                await message.reply_text(
+                    "❌ **YouTube Bot Koruması Tespit Edildi**\n\n"
+                    "YouTube geçici olarak bot erişimini engelliyor.\n\n"
+                    "🔄 **Çözümler:**\n"
+                    "• Birkaç dakika bekleyip tekrar deneyin\n"
+                    "• Farklı bir sanatçı ismi deneyin\n"
+                    "• Bot yeniden başlatılıyor...\n\n"
+                    "⏱️ **Tahmini süre:** 5-10 dakika"
+                )
+            elif "429" in error_msg or "too many requests" in error_msg:
+                await message.reply_text(
+                    "❌ **Çok Fazla İstek**\n\n"
+                    "YouTube çok fazla istek aldığı için geçici olarak engelliyor.\n\n"
+                    "🔄 **Çözüm:**\n"
+                    "• 10-15 dakika bekleyin\n"
+                    "• Daha sonra tekrar deneyin"
+                )
+            else:
+                await message.reply_text(
+                    f"❌ **Sanatçı Arama Hatası**\n\n"
+                    f"**Sanatçı:** {artist_name}\n"
+                    f"**Hata:** {str(e)[:100]}...\n\n"
+                    f"🔄 **Çözüm:**\n"
+                    f"• Farklı bir sanatçı ismi deneyin\n"
+                    f"• Daha spesifik arama yapın\n"
+                    f"• Örnek: 'Ed Sheeran Shape of You'"
+                )
+        except Exception as reply_error:
+            logger.error(f"Hata mesajı gönderilemedi: {reply_error}")
+            # Hata mesajı gönderilemezse sessizce geç
 
 async def handle_fast_download(client, message, url):
     """
