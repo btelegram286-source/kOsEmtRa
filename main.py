@@ -102,7 +102,9 @@ if API_ID == 0000000 or not API_HASH or not BOT_TOKEN:
     print("   - BOT_TOKEN: Bot token'ınız")
     sys.exit(1)
 
-# İndirme klasörlerini oluştur
+# İndirme klasörlerini oluştur - Render.com için /tmp kullan
+DOWNLOAD_DIR = "/tmp/downloads"
+TEMP_DIR = "/tmp/temp"
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 os.makedirs(TEMP_DIR, exist_ok=True)
 
@@ -110,6 +112,10 @@ app = Client("kosemtra_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOK
 
 # Flask uygulaması (Render.com için)
 web_app = Flask(__name__)
+
+# Render.com için özel ayarlar
+RENDER_EXTERNAL_URL = os.getenv('RENDER_EXTERNAL_URL', 'http://localhost:10000')
+PORT = int(os.getenv('PORT', 10000))
 
 @web_app.route('/health')
 def health_check():
@@ -454,7 +460,7 @@ async def download_video(client, message, url, format_type, quality=None):
         
         # İlk deneme - normal yt-dlp
         try:
-            with YoutubeDL(ydl_opts) as ydl:
+        with YoutubeDL(ydl_opts) as ydl:
                 info_dict = ydl.extract_info(url, download=True)
                 file_name = ydl.prepare_filename(info_dict)
         except Exception as e:
@@ -496,8 +502,8 @@ async def download_video(client, message, url, format_type, quality=None):
                 }
                 
                 with YoutubeDL(ydl_opts_minimal) as ydl:
-                    info_dict = ydl.extract_info(url, download=True)
-                    file_name = ydl.prepare_filename(info_dict)
+            info_dict = ydl.extract_info(url, download=True)
+            file_name = ydl.prepare_filename(info_dict)
             
             # Dosya uzantısını düzelt
             if format_type == 'mp3':
@@ -510,7 +516,7 @@ async def download_video(client, message, url, format_type, quality=None):
                 file_name = find_downloaded_file(file_name, "Video indirme")
             except Exception as e:
                 logger.error(f"Video indirme - Dosya bulunamadı: {e}")
-                raise Exception(f"Dosya bulunamadı: {file_name}")
+                        raise Exception(f"Dosya bulunamadı: {file_name}")
             
             # Dosya boyutu kontrolü
             file_size = os.path.getsize(file_name)
@@ -778,16 +784,16 @@ async def send_format_buttons(client, message):
             if any(domain in url.lower() for domain in ['youtube.com', 'youtu.be', 'tiktok.com', 'twitter.com', 'x.com', 'facebook.com', 'fb.watch']):
                 platform = 'youtube' if 'youtube' in url.lower() or 'youtu.be' in url.lower() else 'unknown'
             else:
-                await message.reply_text(
-                    "❌ **Desteklenmeyen Platform!** ❌\n\n"
-                    "Lütfen geçerli bir video linki gönderin:\n"
-                    "• YouTube\n"
-                    "• TikTok\n"
-                    "• Twitter\n"
-                    "• Facebook",
-                    parse_mode=None
-                )
-                return
+            await message.reply_text(
+                "❌ **Desteklenmeyen Platform!** ❌\n\n"
+                "Lütfen geçerli bir video linki gönderin:\n"
+                "• YouTube\n"
+                "• TikTok\n"
+                "• Twitter\n"
+                "• Facebook",
+                parse_mode=None
+            )
+            return
         
         # ReisMp3_bot gibi direkt indirme yap
         await handle_direct_download(client, message, url, platform)
@@ -1168,7 +1174,7 @@ async def handle_direct_download(client, message, url, platform):
         try:
             error_msg = str(e).lower()
             if "sign in to confirm" in error_msg or "bot" in error_msg:
-                await message.reply_text(
+        await message.reply_text(
                     "❌ **YouTube Bot Koruması Tespit Edildi**\n\n"
                     "YouTube geçici olarak bot erişimini engelliyor.\n\n"
                     "🔄 **Çözümler:**\n"
@@ -1324,7 +1330,7 @@ async def handle_artist_search(client, message, artist_name):
                     file_name = file_name.rsplit(".", 1)[0] + ".mp3"
                     success = True
                     logger.info("✅ Sanatçı arama - 1. Deneme başarılı - Android Music Client")
-            except Exception as e:
+    except Exception as e:
                 logger.warning(f"Sanatçı arama - 1. Deneme başarısız: {e}")
         
         # 2. Deneme - iPhone Safari
@@ -1680,10 +1686,10 @@ async def handle_fast_download(client, message, url):
         
         # İlk deneme - normal yt-dlp
         try:
-            with YoutubeDL(ydl_opts) as ydl:
-                info_dict = ydl.extract_info(url, download=True)
-                file_name = ydl.prepare_filename(info_dict)
-                file_name = file_name.rsplit(".", 1)[0] + ".mp3"
+        with YoutubeDL(ydl_opts) as ydl:
+            info_dict = ydl.extract_info(url, download=True)
+            file_name = ydl.prepare_filename(info_dict)
+            file_name = file_name.rsplit(".", 1)[0] + ".mp3"
         except Exception as e:
             logger.warning(f"Hızlı indirme - İlk yt-dlp denemesi başarısız: {e}")
             
@@ -2146,7 +2152,7 @@ def run_web_server():
     """Web sunucusunu çalıştır (Replit/Render.com için)"""
     try:
         logger.info("🌐 Web sunucusu başlatılıyor...")
-        port = int(os.getenv('PORT', 5000))
+        port = PORT
         web_app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
     except Exception as e:
         logger.critical(f"🚨 Web sunucusu başlatılırken hata: {e}", exc_info=True)
