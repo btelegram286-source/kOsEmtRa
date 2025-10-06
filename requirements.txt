@@ -1,0 +1,43 @@
+# Telegram Bot Framework
+pyrogram==2.0.106
+tgcrypto==1.2.5
+
+# Video/Audio Processing
+yt-dlp==2023.12.30
+moviepy==1.0.3
+ffmpeg-python==0.2.0
+
+# Image Processing
+Pillow==10.1.0
+
+# GUI Automation
+pyautogui==0.9.54
+pyscreeze==0.1.29
+
+# Progress Bars
+tqdm==4.66.1
+
+# HTTP Requests
+requests==2.31.0
+aiohttp==3.9.1
+
+# Data Processing
+pandas==2.1.4
+numpy==1.24.3
+
+# Database
+sqlite3
+
+# Utilities
+python-dotenv==1.0.0
+schedule==1.2.0
+psutil==5.9.6
+
+# Web Framework (Render.com için)
+flask==3.0.0
+gunicorn==21.2.0
+
+# Development
+pytest==7.4.3
+black==23.12.0
+flake8==6.1.0
