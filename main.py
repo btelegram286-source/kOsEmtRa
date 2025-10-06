@@ -465,7 +465,7 @@ async def download_video(client, message, url, format_type, quality=None):
         
         # İlk deneme - normal yt-dlp
         try:
-        with YoutubeDL(ydl_opts) as ydl:
+            with YoutubeDL(ydl_opts) as ydl:
                 info_dict = ydl.extract_info(url, download=True)
                 file_name = ydl.prepare_filename(info_dict)
         except Exception as e:
@@ -507,8 +507,8 @@ async def download_video(client, message, url, format_type, quality=None):
                 }
                 
                 with YoutubeDL(ydl_opts_minimal) as ydl:
-            info_dict = ydl.extract_info(url, download=True)
-            file_name = ydl.prepare_filename(info_dict)
+                    info_dict = ydl.extract_info(url, download=True)
+                    file_name = ydl.prepare_filename(info_dict)
             
             # Dosya uzantısını düzelt
             if format_type == 'mp3':
@@ -521,7 +521,7 @@ async def download_video(client, message, url, format_type, quality=None):
                 file_name = find_downloaded_file(file_name, "Video indirme")
             except Exception as e:
                 logger.error(f"Video indirme - Dosya bulunamadı: {e}")
-                        raise Exception(f"Dosya bulunamadı: {file_name}")
+                raise Exception(f"Dosya bulunamadı: {file_name}")
             
             # Dosya boyutu kontrolü
             file_size = os.path.getsize(file_name)
@@ -789,7 +789,7 @@ async def send_format_buttons(client, message):
             if any(domain in url.lower() for domain in ['youtube.com', 'youtu.be', 'tiktok.com', 'twitter.com', 'x.com', 'facebook.com', 'fb.watch']):
                 platform = 'youtube' if 'youtube' in url.lower() or 'youtu.be' in url.lower() else 'unknown'
             else:
-            await message.reply_text(
+                await message.reply_text(
                 "❌ **Desteklenmeyen Platform!** ❌\n\n"
                 "Lütfen geçerli bir video linki gönderin:\n"
                 "• YouTube\n"
@@ -1179,7 +1179,7 @@ async def handle_direct_download(client, message, url, platform):
         try:
             error_msg = str(e).lower()
             if "sign in to confirm" in error_msg or "bot" in error_msg:
-        await message.reply_text(
+                await message.reply_text(
                     "❌ **YouTube Bot Koruması Tespit Edildi**\n\n"
                     "YouTube geçici olarak bot erişimini engelliyor.\n\n"
                     "🔄 **Çözümler:**\n"
@@ -1335,7 +1335,7 @@ async def handle_artist_search(client, message, artist_name):
                     file_name = file_name.rsplit(".", 1)[0] + ".mp3"
                     success = True
                     logger.info("✅ Sanatçı arama - 1. Deneme başarılı - Android Music Client")
-    except Exception as e:
+            except Exception as e:
                 logger.warning(f"Sanatçı arama - 1. Deneme başarısız: {e}")
         
         # 2. Deneme - iPhone Safari
@@ -1691,10 +1691,10 @@ async def handle_fast_download(client, message, url):
         
         # İlk deneme - normal yt-dlp
         try:
-        with YoutubeDL(ydl_opts) as ydl:
-            info_dict = ydl.extract_info(url, download=True)
-            file_name = ydl.prepare_filename(info_dict)
-            file_name = file_name.rsplit(".", 1)[0] + ".mp3"
+            with YoutubeDL(ydl_opts) as ydl:
+                info_dict = ydl.extract_info(url, download=True)
+                file_name = ydl.prepare_filename(info_dict)
+                file_name = file_name.rsplit(".", 1)[0] + ".mp3"
         except Exception as e:
             logger.warning(f"Hızlı indirme - İlk yt-dlp denemesi başarısız: {e}")
             
