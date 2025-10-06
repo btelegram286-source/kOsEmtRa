@@ -182,6 +182,10 @@ async def send_file(client, chat_id, video_file, video_title, waiting_message, t
                 except Exception as e:
                     logger.error(f"İlerleme mesajı güncellenirken hata: {e}")
 
+        # Dosya boyutunu al
+        file_size = os.path.getsize(video_file)
+        file_size_mb = file_size / (1024 * 1024)
+        
         # Thumbnail varsa gönder
         if thumbnail_file and os.path.exists(thumbnail_file):
             try:
@@ -189,9 +193,8 @@ async def send_file(client, chat_id, video_file, video_title, waiting_message, t
                     chat_id=chat_id,
                     photo=thumbnail_file,
                     caption=f"🎬 **{video_title}**\n\n"
-                           f"📊 **Çözünürlük:** {width}x{height}\n"
-                           f"⏱️ **Süre:** {duration} saniye\n"
-                           f"📁 **Dosya:** {os.path.basename(video_file)}"
+                           f"📁 **Dosya:** {os.path.basename(video_file)}\n"
+                           f"📊 **Boyut:** {file_size_mb:.1f} MB"
                 )
             except Exception as e:
                 logger.error(f"Thumbnail gönderilirken hata: {e}")
@@ -201,9 +204,8 @@ async def send_file(client, chat_id, video_file, video_title, waiting_message, t
             chat_id=chat_id,
             video=video_file,
             caption=f"🎬 **{video_title}**\n\n"
-                   f"📊 **Çözünürlük:** {width}x{height}\n"
-                   f"⏱️ **Süre:** {duration} saniye\n"
-                   f"📁 **Dosya:** {os.path.basename(video_file)}",
+                   f"📁 **Dosya:** {os.path.basename(video_file)}\n"
+                   f"📊 **Boyut:** {file_size_mb:.1f} MB",
             progress=progress_callback
         )
 
@@ -670,10 +672,11 @@ def run_bot():
         sys.exit(1)
 
 def run_web_server():
-    """Web sunucusunu çalıştır (Render.com için)"""
+    """Web sunucusunu çalıştır (Replit/Render.com için)"""
     try:
         logger.info("🌐 Web sunucusu başlatılıyor...")
-        web_app.run(host='0.0.0.0', port=8080, debug=False)
+        port = int(os.getenv('PORT', 5000))
+        web_app.run(host='0.0.0.0', port=port, debug=False)
     except Exception as e:
         logger.critical(f"🚨 Web sunucusu başlatılırken hata: {e}", exc_info=True)
 
@@ -681,17 +684,12 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
 
-    # Render.com'da çalışıp çalışmadığını kontrol et
-    if os.getenv('RENDER'):
-        # Render.com'da hem bot hem web sunucusunu çalıştır
-        import threading
-        
-        # Bot'u ayrı thread'de çalıştır
-        bot_thread = threading.Thread(target=run_bot, daemon=True)
-        bot_thread.start()
-        
-        # Web sunucusunu ana thread'de çalıştır
-        run_web_server()
-    else:
-        # Yerel ortamda sadece bot'u çalıştır
-        run_bot()
+    # Hem bot hem web sunucusunu çalıştır
+    import threading
+    
+    # Bot'u ayrı thread'de çalıştır
+    bot_thread = threading.Thread(target=run_bot, daemon=True)
+    bot_thread.start()
+    
+    # Web sunucusunu ana thread'de çalıştır
+    run_web_server()
