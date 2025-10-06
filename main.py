@@ -240,7 +240,7 @@ async def download_video(client, message, url, format_type, quality=None):
         
         # yt-dlp ayarları
         ydl_opts = {
-            'outtmpl': '%(title)s.%(ext)s',
+            'outtmpl': '/tmp/%(title)s.%(ext)s',  # Render.com'da /tmp kullan
             'noplaylist': True,
             'extract_flat': False,
             'writethumbnail': False,
@@ -281,9 +281,20 @@ async def download_video(client, message, url, format_type, quality=None):
             else:
                 file_name = file_name.rsplit(".", 1)[0] + ".mp4"
             
-            # Dosya kontrolü
+            # Dosya kontrolü - alternatif yolları dene
             if not os.path.exists(file_name):
-                raise Exception("Dosya indirilemedi!")
+                # /tmp klasöründe ara
+                base_name = os.path.basename(file_name)
+                tmp_file = f"/tmp/{base_name}"
+                if os.path.exists(tmp_file):
+                    file_name = tmp_file
+                else:
+                    # Mevcut dizinde ara
+                    current_dir_file = os.path.join(os.getcwd(), base_name)
+                    if os.path.exists(current_dir_file):
+                        file_name = current_dir_file
+                    else:
+                        raise Exception(f"Dosya bulunamadı: {file_name}")
             
             # Dosya boyutu kontrolü
             file_size = os.path.getsize(file_name)
@@ -295,7 +306,7 @@ async def download_video(client, message, url, format_type, quality=None):
             thumbnail_file = None
             if thumbnail_url:
                 try:
-                    thumbnail_file = f"{file_name}_thumb.jpg"
+                    thumbnail_file = f"/tmp/{os.path.basename(file_name)}_thumb.jpg"
                     response = requests.get(thumbnail_url)
                     with open(thumbnail_file, 'wb') as f:
                         f.write(response.content)
