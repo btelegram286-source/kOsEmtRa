@@ -278,17 +278,26 @@ async def download_video(client, message, url, format_type, quality=None):
             'writeinfojson': False,
             'socket_timeout': 30,
             'retries': 3,
-            # YouTube bot koruması için ek ayarlar
+            # YouTube bot koruması için güçlü ayarlar
             'extractor_args': {
                 'youtube': {
                     'skip': ['dash', 'hls'],
                     'player_skip': ['webpage'],
-                    'player_client': ['android', 'web']
+                    'player_client': ['android_music', 'android_creator', 'android', 'web']
                 }
             },
             'http_headers': {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-            }
+                'User-Agent': 'Mozilla/5.0 (Linux; Android 10; SM-G973F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'Accept-Language': 'en-us,en;q=0.5',
+                'Accept-Encoding': 'gzip, deflate',
+                'Accept-Charset': 'ISO-8859-1,utf-8;q=0.7,*;q=0.7',
+                'Connection': 'keep-alive',
+            },
+            'sleep_interval': 1,
+            'max_sleep_interval': 5,
+            'sleep_interval_requests': 1,
+            'sleep_interval_subtitles': 1,
         }
         
         # Format ayarları
@@ -587,17 +596,26 @@ async def handle_fast_download(client, message, url):
             'writeinfojson': False,
             'socket_timeout': 30,
             'retries': 3,
-            # YouTube bot koruması için ek ayarlar
+            # YouTube bot koruması için güçlü ayarlar
             'extractor_args': {
                 'youtube': {
                     'skip': ['dash', 'hls'],
                     'player_skip': ['webpage'],
-                    'player_client': ['android', 'web']
+                    'player_client': ['android_music', 'android_creator', 'android', 'web']
                 }
             },
             'http_headers': {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-            }
+                'User-Agent': 'Mozilla/5.0 (Linux; Android 10; SM-G973F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'Accept-Language': 'en-us,en;q=0.5',
+                'Accept-Encoding': 'gzip, deflate',
+                'Accept-Charset': 'ISO-8859-1,utf-8;q=0.7,*;q=0.7',
+                'Connection': 'keep-alive',
+            },
+            'sleep_interval': 1,
+            'max_sleep_interval': 5,
+            'sleep_interval_requests': 1,
+            'sleep_interval_subtitles': 1,
         }
         
         # Platform emojisi
