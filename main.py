@@ -845,32 +845,206 @@ async def handle_direct_download(client, message, url, platform):
         
         start_time = time.time()
         
-        # İlk deneme - normal yt-dlp
-        try:
-            with YoutubeDL(ydl_opts) as ydl:
-                info_dict = ydl.extract_info(url, download=True)
-                file_name = ydl.prepare_filename(info_dict)
-                file_name = file_name.rsplit(".", 1)[0] + ".mp3"
-        except Exception as e:
-            logger.warning(f"Direkt indirme - İlk yt-dlp denemesi başarısız: {e}")
-            
-            # İkinci deneme - farklı ayarlarla
-            logger.info("Direkt indirme - Alternatif yt-dlp ayarları deneniyor...")
-            ydl_opts_alt = ydl_opts.copy()
-            ydl_opts_alt['extractor_args']['youtube']['player_client'] = ['android', 'web']
-            ydl_opts_alt['http_headers']['User-Agent'] = 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_7_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.2 Mobile/15E148 Safari/604.1'
-            
+        # Gelişmiş bypass sistemi - 5 farklı yöntem
+        success = False
+        info_dict = None
+        file_name = None
+        
+        # 1. Deneme - Android Music Client
+        if not success:
             try:
-                with YoutubeDL(ydl_opts_alt) as ydl:
+                logger.info("1. Deneme - Android Music Client")
+                ydl_opts_1 = {
+                    'format': 'bestaudio[ext=m4a]/bestaudio/best',
+                    'postprocessors': [{
+                        'key': 'FFmpegExtractAudio',
+                        'preferredcodec': 'mp3',
+                        'preferredquality': '192',
+                    }],
+                    'outtmpl': '/tmp/%(title)s.%(ext)s',
+                    'noplaylist': True,
+                    'extract_flat': False,
+                    'writethumbnail': False,
+                    'writeinfojson': False,
+                    'socket_timeout': 180,
+                    'retries': 3,
+                    'no_warnings': True,
+                    'quiet': True,
+                    'extractor_args': {
+                        'youtube': {
+                            'player_client': ['android_music'],
+                            'geo_bypass': True,
+                            'geo_bypass_country': 'US'
+                        }
+                    },
+                    'http_headers': {
+                        'User-Agent': 'Mozilla/5.0 (Linux; Android 10; SM-G973F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36',
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                        'Accept-Language': 'en-US,en;q=0.9',
+                        'Accept-Encoding': 'gzip, deflate',
+                        'Connection': 'keep-alive',
+                        'Referer': 'https://www.youtube.com/',
+                        'Origin': 'https://www.youtube.com'
+                    }
+                }
+                
+                with YoutubeDL(ydl_opts_1) as ydl:
                     info_dict = ydl.extract_info(url, download=True)
                     file_name = ydl.prepare_filename(info_dict)
                     file_name = file_name.rsplit(".", 1)[0] + ".mp3"
-            except Exception as e2:
-                logger.warning(f"Direkt indirme - İkinci yt-dlp denemesi başarısız: {e2}")
+                    success = True
+                    logger.info("✅ 1. Deneme başarılı - Android Music Client")
+            except Exception as e:
+                logger.warning(f"1. Deneme başarısız: {e}")
+        
+        # 2. Deneme - iPhone Safari
+        if not success:
+            try:
+                logger.info("2. Deneme - iPhone Safari")
+                ydl_opts_2 = {
+                    'format': 'bestaudio[ext=m4a]/bestaudio/best',
+                    'postprocessors': [{
+                        'key': 'FFmpegExtractAudio',
+                        'preferredcodec': 'mp3',
+                        'preferredquality': '192',
+                    }],
+                    'outtmpl': '/tmp/%(title)s.%(ext)s',
+                    'noplaylist': True,
+                    'extract_flat': False,
+                    'writethumbnail': False,
+                    'writeinfojson': False,
+                    'socket_timeout': 180,
+                    'retries': 3,
+                    'no_warnings': True,
+                    'quiet': True,
+                    'extractor_args': {
+                        'youtube': {
+                            'player_client': ['ios'],
+                            'geo_bypass': True,
+                            'geo_bypass_country': 'US'
+                        }
+                    },
+                    'http_headers': {
+                        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1',
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                        'Accept-Language': 'en-US,en;q=0.9',
+                        'Accept-Encoding': 'gzip, deflate, br',
+                        'Connection': 'keep-alive',
+                        'Referer': 'https://www.youtube.com/',
+                        'Origin': 'https://www.youtube.com'
+                    }
+                }
                 
-                # Üçüncü deneme - minimal ayarlarla
-                logger.info("Direkt indirme - Minimal yt-dlp ayarları deneniyor...")
-                ydl_opts_minimal = {
+                with YoutubeDL(ydl_opts_2) as ydl:
+                    info_dict = ydl.extract_info(url, download=True)
+                    file_name = ydl.prepare_filename(info_dict)
+                    file_name = file_name.rsplit(".", 1)[0] + ".mp3"
+                    success = True
+                    logger.info("✅ 2. Deneme başarılı - iPhone Safari")
+            except Exception as e:
+                logger.warning(f"2. Deneme başarısız: {e}")
+        
+        # 3. Deneme - Googlebot
+        if not success:
+            try:
+                logger.info("3. Deneme - Googlebot")
+                ydl_opts_3 = {
+                    'format': 'bestaudio[ext=m4a]/bestaudio/best',
+                    'postprocessors': [{
+                        'key': 'FFmpegExtractAudio',
+                        'preferredcodec': 'mp3',
+                        'preferredquality': '192',
+                    }],
+                    'outtmpl': '/tmp/%(title)s.%(ext)s',
+                    'noplaylist': True,
+                    'extract_flat': False,
+                    'writethumbnail': False,
+                    'writeinfojson': False,
+                    'socket_timeout': 180,
+                    'retries': 3,
+                    'no_warnings': True,
+                    'quiet': True,
+                    'extractor_args': {
+                        'youtube': {
+                            'player_client': ['web'],
+                            'geo_bypass': True,
+                            'geo_bypass_country': 'US'
+                        }
+                    },
+                    'http_headers': {
+                        'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                        'Accept-Language': 'en-US,en;q=0.9',
+                        'Accept-Encoding': 'gzip, deflate',
+                        'Connection': 'keep-alive',
+                        'Referer': 'https://www.google.com/',
+                        'Origin': 'https://www.google.com'
+                    }
+                }
+                
+                with YoutubeDL(ydl_opts_3) as ydl:
+                    info_dict = ydl.extract_info(url, download=True)
+                    file_name = ydl.prepare_filename(info_dict)
+                    file_name = file_name.rsplit(".", 1)[0] + ".mp3"
+                    success = True
+                    logger.info("✅ 3. Deneme başarılı - Googlebot")
+            except Exception as e:
+                logger.warning(f"3. Deneme başarısız: {e}")
+        
+        # 4. Deneme - Firefox
+        if not success:
+            try:
+                logger.info("4. Deneme - Firefox")
+                ydl_opts_4 = {
+                    'format': 'bestaudio[ext=m4a]/bestaudio/best',
+                    'postprocessors': [{
+                        'key': 'FFmpegExtractAudio',
+                        'preferredcodec': 'mp3',
+                        'preferredquality': '192',
+                    }],
+                    'outtmpl': '/tmp/%(title)s.%(ext)s',
+                    'noplaylist': True,
+                    'extract_flat': False,
+                    'writethumbnail': False,
+                    'writeinfojson': False,
+                    'socket_timeout': 180,
+                    'retries': 3,
+                    'no_warnings': True,
+                    'quiet': True,
+                    'extractor_args': {
+                        'youtube': {
+                            'player_client': ['web'],
+                            'geo_bypass': True,
+                            'geo_bypass_country': 'US'
+                        }
+                    },
+                    'http_headers': {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:91.0) Gecko/20100101 Firefox/91.0',
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                        'Accept-Language': 'en-US,en;q=0.5',
+                        'Accept-Encoding': 'gzip, deflate, br',
+                        'Connection': 'keep-alive',
+                        'Referer': 'https://www.youtube.com/',
+                        'Origin': 'https://www.youtube.com',
+                        'DNT': '1',
+                        'Upgrade-Insecure-Requests': '1'
+                    }
+                }
+                
+                with YoutubeDL(ydl_opts_4) as ydl:
+                    info_dict = ydl.extract_info(url, download=True)
+                    file_name = ydl.prepare_filename(info_dict)
+                    file_name = file_name.rsplit(".", 1)[0] + ".mp3"
+                    success = True
+                    logger.info("✅ 4. Deneme başarılı - Firefox")
+            except Exception as e:
+                logger.warning(f"4. Deneme başarısız: {e}")
+        
+        # 5. Deneme - Minimal ayarlar
+        if not success:
+            try:
+                logger.info("5. Deneme - Minimal ayarlar")
+                ydl_opts_5 = {
                     'format': 'bestaudio[ext=m4a]/bestaudio/best',
                     'postprocessors': [{
                         'key': 'FFmpegExtractAudio',
@@ -883,7 +1057,7 @@ async def handle_direct_download(client, message, url, platform):
                     'writethumbnail': False,
                     'writeinfojson': False,
                     'socket_timeout': 60,
-                    'retries': 2,
+                    'retries': 1,
                     'no_warnings': True,
                     'quiet': True,
                     'extractor_args': {
@@ -892,14 +1066,22 @@ async def handle_direct_download(client, message, url, platform):
                         }
                     },
                     'http_headers': {
-                        'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'
+                        'User-Agent': 'Mozilla/5.0 (Linux; Android 8.0; SM-G960F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36'
                     }
                 }
                 
-                with YoutubeDL(ydl_opts_minimal) as ydl:
+                with YoutubeDL(ydl_opts_5) as ydl:
                     info_dict = ydl.extract_info(url, download=True)
                     file_name = ydl.prepare_filename(info_dict)
                     file_name = file_name.rsplit(".", 1)[0] + ".mp3"
+                    success = True
+                    logger.info("✅ 5. Deneme başarılı - Minimal ayarlar")
+            except Exception as e:
+                logger.warning(f"5. Deneme başarısız: {e}")
+        
+        # Eğer hiçbir deneme başarılı olmadıysa
+        if not success:
+            raise Exception("Tüm bypass yöntemleri başarısız oldu. YouTube bot koruması çok güçlü.")
         
         # Dosya kontrolü
         if not os.path.exists(file_name):
@@ -1063,32 +1245,206 @@ async def handle_artist_search(client, message, artist_name):
         
         start_time = time.time()
         
-        # İlk deneme - normal yt-dlp
-        try:
-            with YoutubeDL(ydl_opts) as ydl:
-                info_dict = ydl.extract_info(search_query, download=True)
-                file_name = ydl.prepare_filename(info_dict)
-                file_name = file_name.rsplit(".", 1)[0] + ".mp3"
-        except Exception as e:
-            logger.warning(f"Sanatçı arama - İlk yt-dlp denemesi başarısız: {e}")
-            
-            # İkinci deneme - farklı ayarlarla
-            logger.info("Sanatçı arama - Alternatif yt-dlp ayarları deneniyor...")
-            ydl_opts_alt = ydl_opts.copy()
-            ydl_opts_alt['extractor_args']['youtube']['player_client'] = ['android', 'web']
-            ydl_opts_alt['http_headers']['User-Agent'] = 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_7_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.2 Mobile/15E148 Safari/604.1'
-            
+        # Gelişmiş bypass sistemi - 5 farklı yöntem
+        success = False
+        info_dict = None
+        file_name = None
+        
+        # 1. Deneme - Android Music Client
+        if not success:
             try:
-                with YoutubeDL(ydl_opts_alt) as ydl:
+                logger.info("Sanatçı arama - 1. Deneme - Android Music Client")
+                ydl_opts_1 = {
+                    'format': 'bestaudio[ext=m4a]/bestaudio/best',
+                    'postprocessors': [{
+                        'key': 'FFmpegExtractAudio',
+                        'preferredcodec': 'mp3',
+                        'preferredquality': '192',
+                    }],
+                    'outtmpl': '/tmp/%(title)s.%(ext)s',
+                    'noplaylist': True,
+                    'extract_flat': False,
+                    'writethumbnail': False,
+                    'writeinfojson': False,
+                    'socket_timeout': 180,
+                    'retries': 3,
+                    'no_warnings': True,
+                    'quiet': True,
+                    'extractor_args': {
+                        'youtube': {
+                            'player_client': ['android_music'],
+                            'geo_bypass': True,
+                            'geo_bypass_country': 'US'
+                        }
+                    },
+                    'http_headers': {
+                        'User-Agent': 'Mozilla/5.0 (Linux; Android 10; SM-G973F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36',
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                        'Accept-Language': 'en-US,en;q=0.9',
+                        'Accept-Encoding': 'gzip, deflate',
+                        'Connection': 'keep-alive',
+                        'Referer': 'https://www.youtube.com/',
+                        'Origin': 'https://www.youtube.com'
+                    }
+                }
+                
+                with YoutubeDL(ydl_opts_1) as ydl:
                     info_dict = ydl.extract_info(search_query, download=True)
                     file_name = ydl.prepare_filename(info_dict)
                     file_name = file_name.rsplit(".", 1)[0] + ".mp3"
-            except Exception as e2:
-                logger.warning(f"Sanatçı arama - İkinci yt-dlp denemesi başarısız: {e2}")
+                    success = True
+                    logger.info("✅ Sanatçı arama - 1. Deneme başarılı - Android Music Client")
+            except Exception as e:
+                logger.warning(f"Sanatçı arama - 1. Deneme başarısız: {e}")
+        
+        # 2. Deneme - iPhone Safari
+        if not success:
+            try:
+                logger.info("Sanatçı arama - 2. Deneme - iPhone Safari")
+                ydl_opts_2 = {
+                    'format': 'bestaudio[ext=m4a]/bestaudio/best',
+                    'postprocessors': [{
+                        'key': 'FFmpegExtractAudio',
+                        'preferredcodec': 'mp3',
+                        'preferredquality': '192',
+                    }],
+                    'outtmpl': '/tmp/%(title)s.%(ext)s',
+                    'noplaylist': True,
+                    'extract_flat': False,
+                    'writethumbnail': False,
+                    'writeinfojson': False,
+                    'socket_timeout': 180,
+                    'retries': 3,
+                    'no_warnings': True,
+                    'quiet': True,
+                    'extractor_args': {
+                        'youtube': {
+                            'player_client': ['ios'],
+                            'geo_bypass': True,
+                            'geo_bypass_country': 'US'
+                        }
+                    },
+                    'http_headers': {
+                        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1',
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                        'Accept-Language': 'en-US,en;q=0.9',
+                        'Accept-Encoding': 'gzip, deflate, br',
+                        'Connection': 'keep-alive',
+                        'Referer': 'https://www.youtube.com/',
+                        'Origin': 'https://www.youtube.com'
+                    }
+                }
                 
-                # Üçüncü deneme - minimal ayarlarla
-                logger.info("Sanatçı arama - Minimal yt-dlp ayarları deneniyor...")
-                ydl_opts_minimal = {
+                with YoutubeDL(ydl_opts_2) as ydl:
+                    info_dict = ydl.extract_info(search_query, download=True)
+                    file_name = ydl.prepare_filename(info_dict)
+                    file_name = file_name.rsplit(".", 1)[0] + ".mp3"
+                    success = True
+                    logger.info("✅ Sanatçı arama - 2. Deneme başarılı - iPhone Safari")
+            except Exception as e:
+                logger.warning(f"Sanatçı arama - 2. Deneme başarısız: {e}")
+        
+        # 3. Deneme - Googlebot
+        if not success:
+            try:
+                logger.info("Sanatçı arama - 3. Deneme - Googlebot")
+                ydl_opts_3 = {
+                    'format': 'bestaudio[ext=m4a]/bestaudio/best',
+                    'postprocessors': [{
+                        'key': 'FFmpegExtractAudio',
+                        'preferredcodec': 'mp3',
+                        'preferredquality': '192',
+                    }],
+                    'outtmpl': '/tmp/%(title)s.%(ext)s',
+                    'noplaylist': True,
+                    'extract_flat': False,
+                    'writethumbnail': False,
+                    'writeinfojson': False,
+                    'socket_timeout': 180,
+                    'retries': 3,
+                    'no_warnings': True,
+                    'quiet': True,
+                    'extractor_args': {
+                        'youtube': {
+                            'player_client': ['web'],
+                            'geo_bypass': True,
+                            'geo_bypass_country': 'US'
+                        }
+                    },
+                    'http_headers': {
+                        'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                        'Accept-Language': 'en-US,en;q=0.9',
+                        'Accept-Encoding': 'gzip, deflate',
+                        'Connection': 'keep-alive',
+                        'Referer': 'https://www.google.com/',
+                        'Origin': 'https://www.google.com'
+                    }
+                }
+                
+                with YoutubeDL(ydl_opts_3) as ydl:
+                    info_dict = ydl.extract_info(search_query, download=True)
+                    file_name = ydl.prepare_filename(info_dict)
+                    file_name = file_name.rsplit(".", 1)[0] + ".mp3"
+                    success = True
+                    logger.info("✅ Sanatçı arama - 3. Deneme başarılı - Googlebot")
+            except Exception as e:
+                logger.warning(f"Sanatçı arama - 3. Deneme başarısız: {e}")
+        
+        # 4. Deneme - Firefox
+        if not success:
+            try:
+                logger.info("Sanatçı arama - 4. Deneme - Firefox")
+                ydl_opts_4 = {
+                    'format': 'bestaudio[ext=m4a]/bestaudio/best',
+                    'postprocessors': [{
+                        'key': 'FFmpegExtractAudio',
+                        'preferredcodec': 'mp3',
+                        'preferredquality': '192',
+                    }],
+                    'outtmpl': '/tmp/%(title)s.%(ext)s',
+                    'noplaylist': True,
+                    'extract_flat': False,
+                    'writethumbnail': False,
+                    'writeinfojson': False,
+                    'socket_timeout': 180,
+                    'retries': 3,
+                    'no_warnings': True,
+                    'quiet': True,
+                    'extractor_args': {
+                        'youtube': {
+                            'player_client': ['web'],
+                            'geo_bypass': True,
+                            'geo_bypass_country': 'US'
+                        }
+                    },
+                    'http_headers': {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:91.0) Gecko/20100101 Firefox/91.0',
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                        'Accept-Language': 'en-US,en;q=0.5',
+                        'Accept-Encoding': 'gzip, deflate, br',
+                        'Connection': 'keep-alive',
+                        'Referer': 'https://www.youtube.com/',
+                        'Origin': 'https://www.youtube.com',
+                        'DNT': '1',
+                        'Upgrade-Insecure-Requests': '1'
+                    }
+                }
+                
+                with YoutubeDL(ydl_opts_4) as ydl:
+                    info_dict = ydl.extract_info(search_query, download=True)
+                    file_name = ydl.prepare_filename(info_dict)
+                    file_name = file_name.rsplit(".", 1)[0] + ".mp3"
+                    success = True
+                    logger.info("✅ Sanatçı arama - 4. Deneme başarılı - Firefox")
+            except Exception as e:
+                logger.warning(f"Sanatçı arama - 4. Deneme başarısız: {e}")
+        
+        # 5. Deneme - Minimal ayarlar
+        if not success:
+            try:
+                logger.info("Sanatçı arama - 5. Deneme - Minimal ayarlar")
+                ydl_opts_5 = {
                     'format': 'bestaudio[ext=m4a]/bestaudio/best',
                     'postprocessors': [{
                         'key': 'FFmpegExtractAudio',
@@ -1101,7 +1457,7 @@ async def handle_artist_search(client, message, artist_name):
                     'writethumbnail': False,
                     'writeinfojson': False,
                     'socket_timeout': 60,
-                    'retries': 2,
+                    'retries': 1,
                     'no_warnings': True,
                     'quiet': True,
                     'extractor_args': {
@@ -1110,14 +1466,22 @@ async def handle_artist_search(client, message, artist_name):
                         }
                     },
                     'http_headers': {
-                        'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'
+                        'User-Agent': 'Mozilla/5.0 (Linux; Android 8.0; SM-G960F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36'
                     }
                 }
                 
-                with YoutubeDL(ydl_opts_minimal) as ydl:
+                with YoutubeDL(ydl_opts_5) as ydl:
                     info_dict = ydl.extract_info(search_query, download=True)
                     file_name = ydl.prepare_filename(info_dict)
                     file_name = file_name.rsplit(".", 1)[0] + ".mp3"
+                    success = True
+                    logger.info("✅ Sanatçı arama - 5. Deneme başarılı - Minimal ayarlar")
+            except Exception as e:
+                logger.warning(f"Sanatçı arama - 5. Deneme başarısız: {e}")
+        
+        # Eğer hiçbir deneme başarılı olmadıysa
+        if not success:
+            raise Exception("Tüm bypass yöntemleri başarısız oldu. YouTube bot koruması çok güçlü.")
         
         # Dosya kontrolü
         if not os.path.exists(file_name):
