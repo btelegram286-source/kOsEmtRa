@@ -2193,7 +2193,18 @@ def run_bot():
         app.run()
         logger.info("✅ Bot başarıyla başlatıldı!")
     except Exception as e:
-        logger.critical(f"🚨 Bot çalıştırılırken kritik hata: {e}", exc_info=True)
+        error_msg = str(e)
+        if "FLOOD_WAIT" in error_msg:
+            logger.warning("⚠️ Telegram Flood Wait hatası - Bot geçici olarak engellendi")
+            logger.warning("⏱️ Lütfen 30 dakika bekleyin ve tekrar deneyin")
+            logger.warning("🔄 Bot otomatik olarak yeniden başlatılacak...")
+            # 30 dakika bekle ve tekrar dene
+            import time
+            time.sleep(1800)  # 30 dakika bekle
+            logger.info("🔄 Flood Wait süresi doldu, bot yeniden başlatılıyor...")
+            run_bot()  # Tekrar dene
+        else:
+            logger.critical(f"🚨 Bot çalıştırılırken kritik hata: {e}", exc_info=True)
 
 def run_web_server():
     """Web sunucusunu çalıştır (Replit/Render.com için)"""
