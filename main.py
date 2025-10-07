@@ -108,6 +108,26 @@ TEMP_DIR = "/tmp/temp"
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 os.makedirs(TEMP_DIR, exist_ok=True)
 
+# FFmpeg kontrolü
+def check_ffmpeg():
+    """FFmpeg'in yüklü olup olmadığını kontrol et"""
+    import subprocess
+    try:
+        result = subprocess.run(['ffmpeg', '-version'], capture_output=True, text=True)
+        if result.returncode == 0:
+            logger.info("✅ FFmpeg yüklü ve çalışıyor")
+            return True
+        else:
+            logger.error("❌ FFmpeg yüklü değil veya çalışmıyor")
+            return False
+    except FileNotFoundError:
+        logger.error("❌ FFmpeg bulunamadı")
+        return False
+
+# FFmpeg kontrolü yap
+if not check_ffmpeg():
+    logger.warning("⚠️ FFmpeg bulunamadı! Video/audio dönüştürme çalışmayabilir.")
+
 app = Client("kosemtra_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
 # Flask uygulaması (Render.com için)
@@ -879,13 +899,15 @@ async def handle_direct_download(client, message, url, platform):
             'prefer_insecure': False,
         }
         
-        # Format ayarları - MP3 olarak indir
+        # Format ayarları - MP3 olarak indir (Render.com için optimize)
         ydl_opts['format'] = 'bestaudio[ext=m4a]/bestaudio/best'
         ydl_opts['postprocessors'] = [{
             'key': 'FFmpegExtractAudio',
             'preferredcodec': 'mp3',
             'preferredquality': '192',
         }]
+        # FFmpeg yolu belirt
+        ydl_opts['ffmpeg_location'] = '/usr/bin/ffmpeg'
         
         start_time = time.time()
         
@@ -1311,6 +1333,7 @@ async def handle_artist_search(client, message, artist_name):
                     'retries': 3,
                     'no_warnings': True,
                     'quiet': True,
+                    'ffmpeg_location': '/usr/bin/ffmpeg',  # FFmpeg yolu
                     'extractor_args': {
                         'youtube': {
                             'player_client': ['android_music'],
@@ -1332,7 +1355,8 @@ async def handle_artist_search(client, message, artist_name):
                 with YoutubeDL(ydl_opts_1) as ydl:
                     info_dict = ydl.extract_info(search_query, download=True)
                     file_name = ydl.prepare_filename(info_dict)
-                    file_name = file_name.rsplit(".", 1)[0] + ".mp3"
+                    # Dosya adındaki boşlukları düzelt
+                    file_name = file_name.replace(' ', '_').rsplit(".", 1)[0] + ".mp3"
                     success = True
                     logger.info("✅ Sanatçı arama - 1. Deneme başarılı - Android Music Client")
             except Exception as e:
@@ -1358,6 +1382,7 @@ async def handle_artist_search(client, message, artist_name):
                     'retries': 3,
                     'no_warnings': True,
                     'quiet': True,
+                    'ffmpeg_location': '/usr/bin/ffmpeg',  # FFmpeg yolu
                     'extractor_args': {
                         'youtube': {
                             'player_client': ['ios'],
