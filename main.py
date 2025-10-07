@@ -1320,37 +1320,23 @@ async def handle_artist_search(client, message, artist_name):
             try:
                 logger.info("Sanatçı arama - 1. Deneme - Android Music Client")
                 ydl_opts_1 = {
-                    'format': 'bestaudio[ext=m4a]/bestaudio/best',
-                    'postprocessors': [{
-                        'key': 'FFmpegExtractAudio',
-                        'preferredcodec': 'mp3',
-                        'preferredquality': '192',
-                    }],
+                    'format': 'bestaudio/best',
                     'outtmpl': '/tmp/%(title)s.%(ext)s',
                     'noplaylist': True,
                     'extract_flat': False,
                     'writethumbnail': False,
                     'writeinfojson': False,
-                    'socket_timeout': 180,
-                    'retries': 3,
-                    'no_warnings': True,
-                    'quiet': True,
-                    'ffmpeg_location': '/usr/bin/ffmpeg',  # FFmpeg yolu
+                    'socket_timeout': 60,
+                    'retries': 2,
+                    'no_warnings': False,  # Uyarıları göster
+                    'quiet': False,  # Çıktıyı göster
                     'extractor_args': {
                         'youtube': {
-                            'player_client': ['android_music'],
-                            'geo_bypass': True,
-                            'geo_bypass_country': 'US'
+                            'player_client': ['android_music']
                         }
                     },
                     'http_headers': {
-                        'User-Agent': 'Mozilla/5.0 (Linux; Android 10; SM-G973F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36',
-                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                        'Accept-Language': 'en-US,en;q=0.9',
-                        'Accept-Encoding': 'gzip, deflate',
-                        'Connection': 'keep-alive',
-                        'Referer': 'https://www.youtube.com/',
-                        'Origin': 'https://www.youtube.com'
+                        'User-Agent': 'Mozilla/5.0 (Linux; Android 10; SM-G973F) AppleWebKit/537.36'
                     }
                 }
                 
@@ -1359,8 +1345,37 @@ async def handle_artist_search(client, message, artist_name):
                     file_name = ydl.prepare_filename(info_dict)
                     # Dosya adındaki boşlukları düzelt
                     file_name = file_name.replace(' ', '_').rsplit(".", 1)[0] + ".mp3"
-                    success = True
-                    logger.info("✅ Sanatçı arama - 1. Deneme başarılı - Android Music Client")
+                    
+                    # Dosya gerçekten indirildi mi kontrol et
+                    if os.path.exists(file_name):
+                        success = True
+                        logger.info("✅ Sanatçı arama - 1. Deneme başarılı - Android Music Client")
+                    else:
+                        # Alternatif dosya adlarını dene
+                        base_name = os.path.basename(file_name)
+                        possible_files = [
+                            f"/tmp/{base_name}",
+                            f"/tmp/{base_name.replace('_', ' ')}",
+                            f"/tmp/{base_name.replace('_', '-')}",
+                            f"/tmp/{base_name.replace('ı', 'i')}",
+                            f"/tmp/{base_name.replace('ı', 'i').replace('_', ' ')}"
+                        ]
+                        
+                        for test_file in possible_files:
+                            if os.path.exists(test_file):
+                                file_name = test_file
+                                success = True
+                                logger.info(f"✅ Dosya bulundu: {test_file}")
+                                break
+                        
+                        if not success:
+                            logger.error(f"❌ Dosya indirilemedi: {file_name}")
+                            # /tmp klasöründeki tüm dosyaları listele
+                            try:
+                                tmp_files = os.listdir('/tmp')
+                                logger.info(f"📁 /tmp klasöründeki dosyalar: {tmp_files}")
+                            except:
+                                pass
             except Exception as e:
                 logger.warning(f"Sanatçı arama - 1. Deneme başarısız: {e}")
         
