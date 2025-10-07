@@ -85,5 +85,37 @@ def find_downloaded_file(original_file_path, logger_context=""):
     except Exception as e:
         logger.error(f"{logger_context} - Render dizin listelenemedi: {e}")
     
+    # 8. YENİ: Tüm /tmp klasöründeki dosyaları listele ve en son indirileni bul
+    try:
+        tmp_files = os.listdir('/tmp')
+        logger.info(f"📁 /tmp klasöründeki tüm dosyalar: {tmp_files}")
+        
+        # Tüm audio/video dosyalarını bul
+        media_files = []
+        for file in tmp_files:
+            if any(file.lower().endswith(ext) for ext in ['.mp3', '.m4a', '.webm', '.mp4', '.wav', '.aac']):
+                media_files.append(file)
+        
+        if media_files:
+            # En son oluşturulan dosyayı bul
+            latest_file = max(media_files, key=lambda x: os.path.getctime(os.path.join('/tmp', x)))
+            latest_path = f"/tmp/{latest_file}"
+            logger.info(f"✅ {logger_context} - En son medya dosyası /tmp'de bulundu: {latest_path}")
+            return latest_path
+    except Exception as e:
+        logger.error(f"{logger_context} - /tmp klasörü detaylı listelenemedi: {e}")
+    
+    # 9. YENİ: Dosya adındaki özel karakterleri düzelt ve tekrar ara
+    try:
+        # Türkçe karakterleri düzelt
+        corrected_name = base_name.replace('ı', 'i').replace('ğ', 'g').replace('ü', 'u').replace('ş', 's').replace('ö', 'o').replace('ç', 'c')
+        corrected_path = f"/tmp/{corrected_name}"
+        
+        if os.path.exists(corrected_path):
+            logger.info(f"✅ {logger_context} - Düzeltilmiş dosya adıyla bulundu: {corrected_path}")
+            return corrected_path
+    except Exception as e:
+        logger.error(f"{logger_context} - Dosya adı düzeltme hatası: {e}")
+    
     # Dosya bulunamadı
     raise Exception(f"{logger_context} - Dosya hiçbir yerde bulunamadı. Aranan: {original_file_path}")

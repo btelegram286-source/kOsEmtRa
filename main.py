@@ -1351,31 +1351,27 @@ async def handle_artist_search(client, message, artist_name):
                         success = True
                         logger.info("✅ Sanatçı arama - 1. Deneme başarılı - Android Music Client")
                     else:
-                        # Alternatif dosya adlarını dene
-                        base_name = os.path.basename(file_name)
-                        possible_files = [
-                            f"/tmp/{base_name}",
-                            f"/tmp/{base_name.replace('_', ' ')}",
-                            f"/tmp/{base_name.replace('_', '-')}",
-                            f"/tmp/{base_name.replace('ı', 'i')}",
-                            f"/tmp/{base_name.replace('ı', 'i').replace('_', ' ')}"
-                        ]
-                        
-                        for test_file in possible_files:
-                            if os.path.exists(test_file):
-                                file_name = test_file
+                        # /tmp klasöründeki tüm dosyaları listele
+                        try:
+                            tmp_files = os.listdir('/tmp')
+                            logger.info(f"📁 /tmp klasöründeki tüm dosyalar: {tmp_files}")
+                            
+                            # En son oluşturulan medya dosyasını bul
+                            media_files = []
+                            for file in tmp_files:
+                                if any(file.lower().endswith(ext) for ext in ['.mp3', '.m4a', '.webm', '.mp4', '.wav', '.aac']):
+                                    media_files.append(file)
+                            
+                            if media_files:
+                                # En son oluşturulan dosyayı bul
+                                latest_file = max(media_files, key=lambda x: os.path.getctime(os.path.join('/tmp', x)))
+                                file_name = f"/tmp/{latest_file}"
                                 success = True
-                                logger.info(f"✅ Dosya bulundu: {test_file}")
-                                break
-                        
-                        if not success:
-                            logger.error(f"❌ Dosya indirilemedi: {file_name}")
-                            # /tmp klasöründeki tüm dosyaları listele
-                            try:
-                                tmp_files = os.listdir('/tmp')
-                                logger.info(f"📁 /tmp klasöründeki dosyalar: {tmp_files}")
-                            except:
-                                pass
+                                logger.info(f"✅ En son medya dosyası bulundu: {file_name}")
+                            else:
+                                logger.error(f"❌ /tmp klasöründe hiç medya dosyası yok")
+                        except Exception as e:
+                            logger.error(f"❌ /tmp klasörü listelenemedi: {e}")
             except Exception as e:
                 logger.warning(f"Sanatçı arama - 1. Deneme başarısız: {e}")
         
