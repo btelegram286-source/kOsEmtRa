@@ -127,6 +127,8 @@ def check_ffmpeg():
 # FFmpeg kontrolü yap
 if not check_ffmpeg():
     logger.warning("⚠️ FFmpeg bulunamadı! Video/audio dönüştürme çalışmayabilir.")
+    logger.warning("⚠️ Lütfen Render.com'da FFmpeg buildpack'i ekleyin!")
+    logger.warning("⚠️ Buildpack URL: https://github.com/jonathanong/heroku-buildpack-ffmpeg-latest.git")
 
 app = Client("kosemtra_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
